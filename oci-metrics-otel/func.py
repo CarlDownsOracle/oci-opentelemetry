@@ -139,14 +139,14 @@ def assemble_otel_attribute(k, v):
         logging.debug(f'dictionary key {k} / value is is None ... ignoring because PROTOBUF does not support null')
         return KeyValue(key=k, value=None)
 
-    if isinstance(v, int):
+    if isinstance(v, bool):
+        return KeyValue(key=k, value=AnyValue(bool_value=v))
+
+    elif isinstance(v, int):
         return KeyValue(key=k, value=AnyValue(int_value=v))
 
     elif isinstance(v, str):
         return KeyValue(key=k, value=AnyValue(string_value=v))
-
-    elif isinstance(v, bool):
-        return KeyValue(key=k, value=AnyValue(bool_value=v))
 
     elif isinstance(v, float):
         return KeyValue(key=k, value=AnyValue(double_value=v))
