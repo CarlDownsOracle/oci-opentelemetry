@@ -63,90 +63,91 @@ looks like.
 
 Example OCI Metrics Payload:
     
-    {
+      {
         "namespace": "oci_vcn",
         "resourceGroup": null,
-        "compartmentId": "ocid1.compartment.oc1...",
-        "name": "VnicFromNetworkBytes",
+        "compartmentId": "ocid1.compartment.oc1..aaaaaaaa5xrgbzkjqv2fcoho4btn53qmpxbsybia4smy6rofug5rttlb6apa",
+        "name": "VnicEgressDropsConntrackFull",
         "dimensions": {
-            "resourceId": "ocid1.vnic.oc1.phx..."
+          "resourceId": "ocid1.vnic.oc1.phx.abyhqljre3uipjiaebzdogmlduniroitfuqikcthjoaudhkqnthuebr7zcja"
         },
         "metadata": {
-            "displayName": "Bytes from Network",
-            "unit": "bytes"
+          "displayName": "Egress Packets Dropped by Full Connection Tracking Table",
+          "unit": "packets"
         },
         "datapoints": [
-            {
-                "timestamp": 1652196912000,
-                "value": 5780.0,
-                "count": 1
-            }
+          {
+            "timestamp": 1652196492000,
+            "value": 0.0,
+            "count": 1
+          }
         ]
-    }
+      }
 
-Example DataDog Metrics Payload:
+Resulting OTEL Output:
 
-    {
-      "series": [
-        {
-          "metric": "system.load.1",
-          "type": 0,
-          "points": [
-            {
-              "timestamp": 1636629071,
-              'value": 1.1
-            }
-          ],
-          "tags": [
-            "test:ExampleSubmitmetricsreturnsPayloadacceptedresponse"
-          ]
-        }
-      ]
-    }
-
-Mapping Behavior:
-
-    {
-      "series": [
-        {
-          "metric": "{re-characterized OCI namespace and metric name values}",
-          "type": {mapped_type_enum},
-          "points": [
-            {
-              "timestamp": {datapoint.timestamp},
-              "value": {datapoint.value}
-            }
-          ],
-          "tags": [
-            "{metrics tag key1:oci payload value}",
-            "{metrics tag key2:oci payload_value}"
-          ]
-        }
-      ]
-    }
-
-Resulting Output:
-
-    {
-      "series": [
-        {
-          "metric": "oci.vcn.vnic.from.network.bytes",
-          "type": 0,
-          "points": [
-            {
-              "timestamp": 1652196912,
-              "value": 5780.0
-            }
-          ],
-          "tags": [
-            "name:VnicFromNetworkBytes",
-            "unit:bytes",
-            "namespace:oci_vcn",
-            "displayName:Bytes from Network"
-          ]
-        }
-      ]
-    }
+      {
+        "resourceMetrics": [
+          {
+            "resource": {
+              "attributes": [
+                {
+                  "key": "resourceId",
+                  "value": {
+                    "stringValue": "ocid1.vnic.oc1.phx.abyhqljre3uipjiaebzdogmlduniroitfuqikcthjoaudhkqnthuebr7zcja"
+                  }
+                },
+                {
+                  "key": "compartmentId",
+                  "value": {
+                    "stringValue": "ocid1.compartment.oc1..aaaaaaaa5xrgbzkjqv2fcoho4btn53qmpxbsybia4smy6rofug5rttlb6apa"
+                  }
+                },
+                {
+                  "key": "resourceGroup"
+                }
+              ]
+            },
+            "scopeMetrics": [
+              {
+                "scope": {
+                  "attributes": [
+                    {
+                      "key": "namespace",
+                      "value": {
+                        "stringValue": "oci_vcn"
+                      }
+                    }
+                  ]
+                },
+                "metrics": [
+                  {
+                    "name": "VnicEgressDropsConntrackFull",
+                    "description": "Egress Packets Dropped by Full Connection Tracking Table",
+                    "unit": "packets",
+                    "gauge": {
+                      "dataPoints": [
+                        {
+                          "startTimeUnixNano": "1652196492000",
+                          "asDouble": 0.0,
+                          "attributes": [
+                            {
+                              "key": "count",
+                              "value": {
+                                "intValue": "1"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
 
 ---
 ## Policy Setup

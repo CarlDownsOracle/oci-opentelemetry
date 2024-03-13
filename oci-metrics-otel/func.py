@@ -14,13 +14,18 @@ from opentelemetry.proto.metrics.v1.metrics_pb2 import MetricsData, ScopeMetrics
     Histogram, Summary, HistogramDataPoint, NumberDataPoint
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 
-api_endpoint = os.getenv('OTEL_COLLECTOR_METRICS_API_ENDPOINT', 'not-configured')
+# Set these environment variables via Function configuration
+
+API_ENDPOINT = os.getenv('OTEL_COLLECTOR_METRICS_API_ENDPOINT', 'not-configured')
+RESOURCE_ATTRIBUTES = os.getenv('RESOURCE_ATTRIBUTES', 'dimensions compartmentId resourceGroup').split(" ")
+SCOPE_ATTRIBUTES = os.getenv('SCOPE_ATTRIBUTES', 'namespace').split(" ")
+DATA_POINT_ATTRIBUTES = os.getenv('DATA_POINT_ATTRIBUTES', 'count').split(" ")
 
 # Set all registered loggers to the configured log_level
 
-logging_level = os.getenv('LOGGING_LEVEL', 'INFO')
+LOGGING_LEVEL = os.getenv('LOGGING_LEVEL', 'INFO')
 loggers = [logging.getLogger()] + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-[logger.setLevel(logging.getLevelName(logging_level)) for logger in loggers]
+[logger.setLevel(logging.getLevelName(LOGGING_LEVEL)) for logger in loggers]
 
 
 def handler(ctx, data: io.BytesIO = None):
@@ -31,11 +36,11 @@ def handler(ctx, data: io.BytesIO = None):
     :return: plain text response indicating success or error
     """
 
-    preamble = "fn {} / events {} / logging level {}"
+    preamble = "fn {} / metric events {} / logging level {}"
 
     try:
         event_list = json.loads(data.getvalue())
-        logging.info(preamble.format(ctx.FnName(), len(event_list), logging_level))
+        logging.info(preamble.format(ctx.FnName(), len(event_list), LOGGING_LEVEL))
         logs_data = assemble_otel_metrics_data(event_list=event_list)
         logs_data_json = serialize_otel_message_to_json(logs_data)
         send_to_otel_collector(logs_data_json=logs_data_json)
@@ -89,7 +94,7 @@ def assemble_otel_metrics(log_record: dict):
     oci_datapoints = get_dictionary_value(log_record, 'datapoints')
     for oci_datapoint in oci_datapoints:
 
-        data_point_attributes = assemble_otel_attributes(oci_datapoint, ['count'])
+        data_point_attributes = assemble_otel_attributes(oci_datapoint, DATA_POINT_ATTRIBUTES)
         data_point = NumberDataPoint(attributes=data_point_attributes)
         data_point.start_time_unix_nano = oci_datapoint.get('timestamp')
         data_point.as_double = float(oci_datapoint.get('value'))
@@ -102,16 +107,14 @@ def assemble_otel_metrics(log_record: dict):
 
 
 def assemble_otel_scope(log_record: dict):
-    scope_attributes = assemble_otel_attributes(log_record, ['namespace'])
-    # attributes = assemble_otel_attributes(log_record, ['metadata'])
+    scope_attributes = assemble_otel_attributes(log_record, SCOPE_ATTRIBUTES)
     inst_scope = InstrumentationScope(attributes=scope_attributes)
     return inst_scope
 
 
 def assemble_otel_resource(log_record: dict):
-    resource_attributes = assemble_otel_attributes(log_record, ['dimensions', 'compartmentId', 'resourceGroup'])
 
-    # attributes = assemble_otel_attributes(log_record, ['source', 'type'])
+    resource_attributes = assemble_otel_attributes(log_record, RESOURCE_ATTRIBUTES)
     resource = Resource(attributes=resource_attributes)
     return resource
 
@@ -231,7 +234,7 @@ def send_to_otel_collector(logs_data_json):
         session.mount('https://', adapter)
 
         http_headers = {'Content-type': 'application/json'}
-        post_response = session.post(api_endpoint, data=json.dumps(logs_data_json), headers=http_headers)
+        post_response = session.post(API_ENDPOINT, data=json.dumps(logs_data_json), headers=http_headers)
         if post_response.status_code != 200:
             raise Exception(f'error sending to OpenTelemetry Collector / {post_response.text}')
 
@@ -241,7 +244,7 @@ def send_to_otel_collector(logs_data_json):
 
 def serialize_otel_message_to_json(logs_data: LogsData):
     logs_data_dict_obj = MessageToDict(logs_data)
-    logs_data_json = json.dumps(logs_data_dict_obj, indent=4)
+    logs_data_json = json.dumps(logs_data_dict_obj, indent=2)
     return logs_data_json
 
 
