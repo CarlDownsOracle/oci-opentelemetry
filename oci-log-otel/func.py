@@ -254,6 +254,6 @@ Local Debugging
 
 if __name__ == "__main__":
     # local_test_mode('../data/oci_log.json')
-    local_test_mode('../data/audit.1.json')
-    # local_test_mode('../data/oci_logs.json')
+    # local_test_mode('../data/audit.1.json')
+    local_test_mode('../data/oci_logs.json')
 
