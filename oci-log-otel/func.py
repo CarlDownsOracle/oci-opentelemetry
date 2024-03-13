@@ -231,37 +231,3 @@ if __name__ == "__main__":
     local_test_mode('../data/oci_log.json')
     # local_test_mode('../data/oci_logs.json')
 
-
-# def transform_cloud_event_to_otel_format(log_record: dict):
-#     """
-#     Transform CloudEvents to DataDog format.
-#     See: https://github.com/cloudevents/spec/blob/v1.0/json-format.md
-#     :param log_record: CloudEvent log record
-#     :return: OpenTelemetry formatted log record
-#     """
-#     pass
-
-    # kv_list = KeyValueList()
-    # k1 = KeyValue()
-    # k1.key = "this"
-    # k2 = KeyValue()
-    # k2.key = "totally.get.it.now"
-    #
-    # list_of_keys = [k1, k2]
-    #
-    # resource1 = Resource(attributes=list_of_keys)
-    #
-    # k3 = KeyValue(key='counter', value=AnyValue(int_value=700008))
-    # k4 = KeyValue(key='tenancy_is_active', value=AnyValue(bool_value=True))
-    # k5 = KeyValue(key='vcn', value=AnyValue(string_value='this is a vcn'))
-    #
-    # kvlist = [k3, k4]
-    # k6 = KeyValue(key='dictionary', value=AnyValue(kvlist_value=KeyValueList(values=kvlist)))
-    #
-    # resource2 = Resource(attributes=[k3, k4, k5, k6])
-    #
-    # resource_logs = [ResourceLogs(resource=resource1), ResourceLogs(resource=resource2)]
-    #
-    # inst_scope = InstrumentationScope()
-    # log_records = [LogRecord(time_unix_nano=0, observed_time_unix_nano=0)]
-    # scope_logs = ScopeLogs(scope=inst_scope, log_records=log_records)
