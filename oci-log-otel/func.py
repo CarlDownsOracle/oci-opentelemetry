@@ -5,11 +5,9 @@ import os
 import requests
 from fdk import response
 
-import json
-
 from google.protobuf.internal.well_known_types import Timestamp
 from google.protobuf.json_format import MessageToDict
-from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope, KeyValueList, KeyValue, AnyValue
+from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope, KeyValueList, KeyValue, AnyValue, ArrayValue
 from opentelemetry.proto.logs.v1.logs_pb2 import LogRecord, LogsData, ResourceLogs, ScopeLogs
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 
@@ -72,7 +70,7 @@ def assemble_otel_resource_logs(log_record: dict):
 
 def assemble_otel_resource(log_record: dict):
     
-    attributes = assemble_otel_attributes(log_record, ['source', 'specversion', 'type'])
+    attributes = assemble_otel_attributes(log_record, ['source', 'type'])
     resource = Resource(attributes=attributes)
     return resource
 
@@ -96,7 +94,8 @@ def assemble_otel_attributes(log_record: dict, target_keys: list):
 def assemble_otel_attribute(k, v):
 
     if v is None:
-        raise ValueError(f'dictionary key {k} / value is is None')
+        logging.debug(f'dictionary key {k} / value is is None ... ignoring because PROTOBUF does not support null')
+        return KeyValue(key=k, value=None)
 
     if isinstance(v, int):
         return KeyValue(key=k, value=AnyValue(int_value=v))
@@ -110,14 +109,17 @@ def assemble_otel_attribute(k, v):
     elif isinstance(v, float):
         return KeyValue(key=k, value=AnyValue(double_value=v))
 
+    elif isinstance(v, list):
+        return assemble_otel_attribute_list_value(k, v)
+
     elif isinstance(v, dict):
-        return assemble_otel_attribute_kvlist(k, v)
+        return assemble_otel_attribute_dictionary_value(k, v)
 
     else:
         raise ValueError(f'dictionary key {k} / value is not supported yet / {v}')
 
 
-def assemble_otel_attribute_kvlist(k, v):
+def assemble_otel_attribute_dictionary_value(k, v):
 
     kvlist = []
 
@@ -126,6 +128,29 @@ def assemble_otel_attribute_kvlist(k, v):
 
     key_value = KeyValue(key=k, value=AnyValue(kvlist_value=KeyValueList(values=kvlist)))
     return key_value
+
+
+def assemble_otel_attribute_list_value(k, v):
+
+    values_list = []
+    for list_value in v:
+        if isinstance(list_value, int):
+            values_list.append(AnyValue(int_value=list_value))
+
+        elif isinstance(list_value, str):
+            values_list.append(AnyValue(string_value=list_value))
+
+        elif isinstance(list_value, bool):
+            values_list.append(AnyValue(bool_value=list_value))
+
+        elif isinstance(list_value, float):
+            values_list.append(AnyValue(double_value=list_value))
+
+        else:
+            raise ValueError(f'attribute_list assigned to key {k} / value is not supported yet / {v}')
+
+    array_value = KeyValue(key=k, value=AnyValue(array_value=ArrayValue(values=values_list)))
+    return array_value
 
 
 def assemble_otel_scope_logs(log_record: dict):
@@ -138,7 +163,7 @@ def assemble_otel_scope_logs(log_record: dict):
 
 def assemble_otel_log_records(log_record: dict):
 
-    attributes = assemble_otel_attributes(log_record, ['logContent'])
+    attributes = assemble_otel_attributes(log_record, ['logContent', 'datetime'])
     log_record = LogRecord(time_unix_nano=0, observed_time_unix_nano=0, attributes=attributes)
     return [log_record]
 
@@ -228,6 +253,7 @@ Local Debugging
 """
 
 if __name__ == "__main__":
-    local_test_mode('../data/oci_log.json')
+    # local_test_mode('../data/oci_log.json')
+    local_test_mode('../data/audit.1.json')
     # local_test_mode('../data/oci_logs.json')
 
