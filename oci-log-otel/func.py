@@ -91,10 +91,6 @@ def assemble_otel_attributes(log_record: dict, target_keys: list):
             combined_list.append(assemble_otel_attribute(target_key, value))
 
     return combined_list
-    # k3 = KeyValue(key='counter', value=AnyValue(int_value=700008))
-    # k4 = KeyValue(key='active', value=AnyValue(bool_value=True))
-    # k5 = KeyValue(key='compartment_id', value=AnyValue(string_value='ocid1.compartment.oc1...'))
-    # return [k3, k4, k5]
 
 
 def assemble_otel_attribute(k, v):
@@ -104,12 +100,16 @@ def assemble_otel_attribute(k, v):
 
     if isinstance(v, int):
         return KeyValue(key=k, value=AnyValue(int_value=v))
+
     elif isinstance(v, str):
         return KeyValue(key=k, value=AnyValue(string_value=v))
+
     elif isinstance(v, bool):
         return KeyValue(key=k, value=AnyValue(bool_value=v))
+
     elif isinstance(v, float):
         return KeyValue(key=k, value=AnyValue(double_value=v))
+
     else:
         raise ValueError(f'dictionary key {k} / value is not supported yet / {v}')
 
