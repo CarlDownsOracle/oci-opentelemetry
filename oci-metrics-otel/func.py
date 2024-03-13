@@ -10,10 +10,11 @@ from google.protobuf.internal.well_known_types import Timestamp
 from google.protobuf.json_format import MessageToDict
 from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope, KeyValueList, KeyValue, AnyValue, ArrayValue
 from opentelemetry.proto.logs.v1.logs_pb2 import LogRecord, LogsData, ResourceLogs, ScopeLogs
-from opentelemetry.proto.metrics.v1.metrics_pb2 import MetricsData, ScopeMetrics
+from opentelemetry.proto.metrics.v1.metrics_pb2 import MetricsData, ScopeMetrics, ResourceMetrics, Metric, Sum, Gauge, \
+    Histogram, Summary, HistogramDataPoint, NumberDataPoint
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 
-api_endpoint = os.getenv('OTEL_COLLECTOR_API_ENDPOINT', 'not-configured')
+api_endpoint = os.getenv('OTEL_COLLECTOR_METRICS_API_ENDPOINT', 'not-configured')
 
 # Set all registered loggers to the configured log_level
 
@@ -44,31 +45,74 @@ def handler(ctx, data: io.BytesIO = None):
 
 
 def assemble_otel_metrics_data(event_list: dict):
+
     resource_metrics = assemble_otel_resource_metrics_list(event_list)
     metrics_data = MetricsData(resource_metrics=resource_metrics)
     return metrics_data
 
 
 def assemble_otel_resource_metrics_list(event_list: dict):
-    resource_logs_list = []
+
+    resource_metrics_list = []
     for event in event_list:
-        resource_logs = assemble_otel_resource_logs(log_record=event)
-        resource_logs_list.append(resource_logs)
-        # logging.debug(resource_log)
+        resource_metrics = assemble_otel_resource_metrics(log_record=event)
+        resource_metrics_list.append(resource_metrics)
 
-    return resource_logs_list
+    return resource_metrics_list
 
 
-def assemble_otel_resource_logs(log_record: dict):
+def assemble_otel_resource_metrics(log_record: dict):
+
     resource = assemble_otel_resource(log_record)
-    scope_logs = assemble_otel_scope_logs(log_record)
-    resource_logs = ResourceLogs(resource=resource, scope_logs=scope_logs)
-    return resource_logs
+    scope_metrics = assemble_otel_scope_metrics(log_record)
+    resource_metrics = ResourceMetrics(resource=resource, scope_metrics=scope_metrics)
+    return resource_metrics
+
+
+def assemble_otel_scope_metrics(log_record: dict):
+
+    scope = assemble_otel_scope(log_record)
+    metrics = assemble_otel_metrics(log_record)
+    scope_metrics = ScopeMetrics(scope=scope, metrics=metrics)
+    return [scope_metrics]
+
+
+def assemble_otel_metrics(log_record: dict):
+
+    name = get_dictionary_value(log_record, 'name')
+    display_name = get_dictionary_value(log_record, 'displayName')
+    unit = get_dictionary_value(log_record, 'unit')
+
+    # generate an OTEL metric entry for each OCI data point
+
+    metrics = []
+    oci_datapoints = get_dictionary_value(log_record, 'datapoints')
+    for oci_datapoint in oci_datapoints:
+
+        data_point_attributes = assemble_otel_attributes(oci_datapoint, ['count'])
+        data_point = NumberDataPoint(attributes=data_point_attributes)
+        data_point.start_time_unix_nano = oci_datapoint.get('timestamp')
+        data_point.as_double = float(oci_datapoint.get('value'))
+        unit = unit
+        gauge = Gauge(data_points=[data_point])
+        metric = Metric(name=name, description=display_name, unit=unit, gauge=gauge)
+        metrics.append(metric)
+
+    return metrics
+
+
+def assemble_otel_scope(log_record: dict):
+    scope_attributes = assemble_otel_attributes(log_record, ['namespace'])
+    # attributes = assemble_otel_attributes(log_record, ['metadata'])
+    inst_scope = InstrumentationScope(attributes=scope_attributes)
+    return inst_scope
 
 
 def assemble_otel_resource(log_record: dict):
-    attributes = assemble_otel_attributes(log_record, ['source', 'type'])
-    resource = Resource(attributes=attributes)
+    resource_attributes = assemble_otel_attributes(log_record, ['dimensions', 'compartmentId', 'resourceGroup'])
+
+    # attributes = assemble_otel_attributes(log_record, ['source', 'type'])
+    resource = Resource(attributes=resource_attributes)
     return resource
 
 
@@ -144,26 +188,6 @@ def assemble_otel_attribute_list_value(k, v):
 
     array_value = KeyValue(key=k, value=AnyValue(array_value=ArrayValue(values=values_list)))
     return array_value
-
-
-def assemble_otel_scope_logs(log_record: dict):
-    inst_scope = assemble_otel_instrumentation_scope(log_record)
-    log_records = assemble_otel_log_records(log_record)
-    scope_metrics = ScopeMetrics(scope=inst_scope, metrics=metrics)
-    scope_logs = ScopeLogs(scope=inst_scope, log_records=log_records)
-    return [scope_logs]
-
-
-def assemble_otel_log_records(log_record: dict):
-    attributes = assemble_otel_attributes(log_record, ['logContent', 'datetime'])
-    log_record = LogRecord(time_unix_nano=0, observed_time_unix_nano=0, attributes=attributes)
-    return [log_record]
-
-
-def assemble_otel_instrumentation_scope(log_record: dict):
-    attributes = assemble_otel_attributes(log_record, ['oracle'])
-    inst_scope = InstrumentationScope(attributes=attributes)
-    return inst_scope
 
 
 def get_dictionary_value(dictionary: dict, target_key: str):
@@ -244,7 +268,5 @@ Local Debugging
 """
 
 if __name__ == "__main__":
-    # local_test_mode('../data/oci_log.json')
-    # local_test_mode('../data/audit.1.json')
-    local_test_mode('../data/oci_logs.json')
+    local_test_mode('../data/oci.metrics.json')
 
