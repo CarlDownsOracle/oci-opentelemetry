@@ -110,8 +110,22 @@ def assemble_otel_attribute(k, v):
     elif isinstance(v, float):
         return KeyValue(key=k, value=AnyValue(double_value=v))
 
+    elif isinstance(v, dict):
+        return assemble_otel_attribute_kvlist(k, v)
+
     else:
         raise ValueError(f'dictionary key {k} / value is not supported yet / {v}')
+
+
+def assemble_otel_attribute_kvlist(k, v):
+
+    kvlist = []
+
+    for k2, v2 in v.items():
+        kvlist.append(assemble_otel_attribute(k2, v2))
+
+    key_value = KeyValue(key=k, value=AnyValue(kvlist_value=KeyValueList(values=kvlist)))
+    return key_value
 
 
 def assemble_otel_scope_logs(log_record: dict):
@@ -124,7 +138,7 @@ def assemble_otel_scope_logs(log_record: dict):
 
 def assemble_otel_log_records(log_record: dict):
 
-    attributes = assemble_otel_attributes(log_record, ['data'])
+    attributes = assemble_otel_attributes(log_record, ['logContent'])
     log_record = LogRecord(time_unix_nano=0, observed_time_unix_nano=0, attributes=attributes)
     return [log_record]
 
