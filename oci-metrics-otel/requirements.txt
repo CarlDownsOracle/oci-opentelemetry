@@ -1,3 +1,5 @@
 oci
 requests
+opentelemetry-proto
+protobuf
 fdk
