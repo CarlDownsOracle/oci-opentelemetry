@@ -36,19 +36,12 @@ def handler(ctx, data: io.BytesIO = None):
     try:
         event_list = json.loads(data.getvalue())
         logging.info(preamble.format(ctx.FnName(), len(event_list), logging_level))
-        logs_data = handle_log_events(event_list=event_list)
+        logs_data = assemble_otel_logs_data(event_list=event_list)
         logs_data_json = serialize_otel_message_to_json(logs_data)
         send_to_otel_collector(logs_data_json=logs_data_json)
 
     except (Exception, ValueError) as ex:
         logging.error('error handling logging payload: {}'.format(str(ex)))
-
-
-def handle_log_events(event_list):
-    """
-    """
-
-    return assemble_otel_logs_data(event_list=event_list)
 
 
 def assemble_otel_logs_data(event_list: dict):
@@ -79,19 +72,50 @@ def assemble_otel_resource_logs(log_record: dict):
 
 def assemble_otel_resource(log_record: dict):
     
-    attributes = assemble_otel_attributes(log_record)
+    attributes = assemble_otel_attributes(log_record, ['source', 'specversion', 'type'])
     resource = Resource(attributes=attributes)
     return resource
 
 
-def assemble_otel_attributes(log_record: dict):
-    k3 = KeyValue(key='counter', value=AnyValue(int_value=700008))
-    k4 = KeyValue(key='tenancy_is_active', value=AnyValue(bool_value=True))
-    k5 = KeyValue(key='vcn', value=AnyValue(string_value='this is a vcn'))
-    return [k3, k4, k5]
+def assemble_otel_attributes(log_record: dict, target_keys: list):
+
+    combined_list = []
+
+    for target_key in target_keys:
+        value = get_dictionary_value(log_record, target_key)
+
+        if isinstance(value, dict):
+            for k, v in value.items():
+                combined_list.append(assemble_otel_attribute(k, v))
+        else:
+            combined_list.append(assemble_otel_attribute(target_key, value))
+
+    return combined_list
+    # k3 = KeyValue(key='counter', value=AnyValue(int_value=700008))
+    # k4 = KeyValue(key='active', value=AnyValue(bool_value=True))
+    # k5 = KeyValue(key='compartment_id', value=AnyValue(string_value='ocid1.compartment.oc1...'))
+    # return [k3, k4, k5]
+
+
+def assemble_otel_attribute(k, v):
+
+    if v is None:
+        raise ValueError(f'dictionary key {k} / value is is None')
+
+    if isinstance(v, int):
+        return KeyValue(key=k, value=AnyValue(int_value=v))
+    elif isinstance(v, str):
+        return KeyValue(key=k, value=AnyValue(string_value=v))
+    elif isinstance(v, bool):
+        return KeyValue(key=k, value=AnyValue(bool_value=v))
+    elif isinstance(v, float):
+        return KeyValue(key=k, value=AnyValue(double_value=v))
+    else:
+        raise ValueError(f'dictionary key {k} / value is not supported yet / {v}')
 
 
 def assemble_otel_scope_logs(log_record: dict):
+
     inst_scope = assemble_otel_instrumentation_scope(log_record)
     log_records = assemble_otel_log_records(log_record)
     scope_logs = ScopeLogs(scope=inst_scope, log_records=log_records)
@@ -99,12 +123,16 @@ def assemble_otel_scope_logs(log_record: dict):
 
 
 def assemble_otel_log_records(log_record: dict):
-    log_records = [LogRecord(time_unix_nano=0, observed_time_unix_nano=0)]
-    return log_records
+
+    attributes = assemble_otel_attributes(log_record, ['data'])
+    log_record = LogRecord(time_unix_nano=0, observed_time_unix_nano=0, attributes=attributes)
+    return [log_record]
 
 
 def assemble_otel_instrumentation_scope(log_record: dict):
-    inst_scope = InstrumentationScope()
+
+    attributes = assemble_otel_attributes(log_record, ['oracle'])
+    inst_scope = InstrumentationScope(attributes=attributes)
     return inst_scope
 
 
@@ -174,7 +202,7 @@ def local_test_mode(filename):
         if isinstance(contents, dict):
             contents = [contents]
 
-        logs_data = handle_log_events(event_list=contents)
+        logs_data = assemble_otel_logs_data(event_list=contents)
         logs_data_json = serialize_otel_message_to_json(logs_data)
         logging.info(logs_data_json)
 
@@ -186,7 +214,8 @@ Local Debugging
 """
 
 if __name__ == "__main__":
-    local_test_mode('../data/oci_logs.json')
+    local_test_mode('../data/oci_log.json')
+    # local_test_mode('../data/oci_logs.json')
 
 
 # def transform_cloud_event_to_otel_format(log_record: dict):
