@@ -1,33 +1,19 @@
-#
-# oci-metrics-to-datadog version 1.0.
-#
-# Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
-# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
 
 import io
 import json
 import logging
 import os
-import re
 import requests
 from fdk import response
-from datetime import datetime
 
-"""
-This sample OCI Function maps OCI Monitoring Service Metrics to the DataDog 
-REST API 'submit-metrics' contract found here:
+from google.protobuf.internal.well_known_types import Timestamp
+from google.protobuf.json_format import MessageToDict
+from opentelemetry.proto.common.v1.common_pb2 import InstrumentationScope, KeyValueList, KeyValue, AnyValue, ArrayValue
+from opentelemetry.proto.logs.v1.logs_pb2 import LogRecord, LogsData, ResourceLogs, ScopeLogs
+from opentelemetry.proto.metrics.v1.metrics_pb2 import MetricsData, ScopeMetrics
+from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 
-https://docs.datadoghq.com/api/latest/metrics/#submit-metrics
-
-"""
-
-# Use OCI Application or Function configurations to override these environment variable defaults.
-
-api_endpoint = os.getenv('DATADOG_METRICS_API_ENDPOINT', 'not-configured')
-api_key = os.getenv('DATADOG_API_KEY', 'not-configured')
-is_forwarding = eval(os.getenv('FORWARD_TO_DATADOG', "True"))
-metric_tag_keys = os.getenv('METRICS_TAG_KEYS', 'name, namespace, displayName, resourceDisplayName, unit')
-metric_tag_set = set()
+api_endpoint = os.getenv('OTEL_COLLECTOR_API_ENDPOINT', 'not-configured')
 
 # Set all registered loggers to the configured log_level
 
@@ -35,16 +21,6 @@ logging_level = os.getenv('LOGGING_LEVEL', 'INFO')
 loggers = [logging.getLogger()] + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
 [logger.setLevel(logging.getLevelName(logging_level)) for logger in loggers]
 
-# Exception stack trace logging
-
-is_tracing = eval(os.getenv('ENABLE_TRACING', "False"))
-
-# Constants
-
-TEN_MINUTES_SEC = 10 * 60
-ONE_HOUR_SEC = 60 * 60
-
-# Functions
 
 def handler(ctx, data: io.BytesIO = None):
     """
@@ -54,207 +30,140 @@ def handler(ctx, data: io.BytesIO = None):
     :return: plain text response indicating success or error
     """
 
-    preamble = " {} / event count = {} / logging level = {} / forwarding to DataDog = {}"
+    preamble = "fn {} / events {} / logging level {}"
 
     try:
-        metrics_list = json.loads(data.getvalue())
-        logging.getLogger().info(preamble.format(ctx.FnName(), len(metrics_list), logging_level, is_forwarding))
-        logging.getLogger().debug(metrics_list)
-        converted_event_list = handle_metric_events(event_list=metrics_list)
-        send_to_datadog(event_list=converted_event_list)
+        event_list = json.loads(data.getvalue())
+        logging.info(preamble.format(ctx.FnName(), len(event_list), logging_level))
+        logs_data = assemble_otel_metrics_data(event_list=event_list)
+        logs_data_json = serialize_otel_message_to_json(logs_data)
+        send_to_otel_collector(logs_data_json=logs_data_json)
 
     except (Exception, ValueError) as ex:
-        logging.getLogger().error('error handling logging payload: {}'.format(str(ex)))
-        if is_tracing:
-            logging.getLogger().error(ex)
+        logging.error('error handling logging payload: {}'.format(str(ex)))
 
 
-def handle_metric_events(event_list):
-    """
-    :param event_list: the list of metric formatted log records.
-    :return: the list of DataDog formatted log records
-    """
+def assemble_otel_metrics_data(event_list: dict):
+    resource_metrics = assemble_otel_resource_metrics_list(event_list)
+    metrics_data = MetricsData(resource_metrics=resource_metrics)
+    return metrics_data
 
-    result_list = []
+
+def assemble_otel_resource_metrics_list(event_list: dict):
+    resource_logs_list = []
     for event in event_list:
-        single_result = transform_metric_to_datadog_format(log_record=event)
-        result_list.append(single_result)
-        logging.getLogger().debug(single_result)
+        resource_logs = assemble_otel_resource_logs(log_record=event)
+        resource_logs_list.append(resource_logs)
+        # logging.debug(resource_log)
 
-    return result_list
-
-
-def transform_metric_to_datadog_format(log_record: dict):
-    """
-    Transform metrics to DataDog format.
-    See: https://github.com/metrics/spec/blob/v1.0/json-format.md
-    :param log_record: metric log record
-    :return: DataDog formatted log record
-    """
-
-    series = [{
-        'metric': get_metric_name(log_record),
-        'type' : get_metric_type(log_record),
-        'points' : get_metric_points(log_record),
-        'tags' : get_metric_tags(log_record),
-    }]
-
-    result = {
-        'series' : series
-    }
-    return result
+    return resource_logs_list
 
 
-def get_metric_name(log_record: dict):
-    """
-    Assembles a metric name that appears to follow DataDog conventions.
-    :param log_record:
-    :return:
-    """
-
-    elements = get_dictionary_value(log_record, 'namespace').split('_')
-    elements += camel_case_split(get_dictionary_value(log_record, 'name'))
-    elements = [element.lower() for element in elements]
-    return '.'.join(elements)
+def assemble_otel_resource_logs(log_record: dict):
+    resource = assemble_otel_resource(log_record)
+    scope_logs = assemble_otel_scope_logs(log_record)
+    resource_logs = ResourceLogs(resource=resource, scope_logs=scope_logs)
+    return resource_logs
 
 
-def camel_case_split(str):
-    """
-    :param str:
-    :return: Splits camel case string to individual strings
-    """
-
-    return re.findall(r'[A-Z](?:[a-z]+|[A-Z]*(?=[A-Z]|$))', str)
+def assemble_otel_resource(log_record: dict):
+    attributes = assemble_otel_attributes(log_record, ['source', 'type'])
+    resource = Resource(attributes=attributes)
+    return resource
 
 
-def get_metric_type(log_record: dict):
-    """
-    :param log_record:
-    :return: The type of metric. The available types are 0 (unspecified), 1 (count), 2 (rate), and 3 (gauge).
-    Allowed enum values: 0,1,2,3
-    """
+def assemble_otel_attributes(log_record: dict, target_keys: list):
+    combined_list = []
 
-    return 0
+    for target_key in target_keys:
+        value = get_dictionary_value(log_record, target_key)
 
+        if isinstance(value, dict):
+            for k, v in value.items():
+                combined_list.append(assemble_otel_attribute(k, v))
+        else:
+            combined_list.append(assemble_otel_attribute(target_key, value))
 
-def get_now_timestamp():
-    return datetime.now().timestamp()
-
-
-def adjust_metric_timestamp(timestamp_ms):
-    """
-    DataDog Timestamps should be in POSIX time in seconds, and cannot be more than ten
-    minutes in the future or more than one hour in the past.  OCI Timestamps are POSIX
-    in milliseconds, therefore a conversion is required.
-
-    See https://docs.datadoghq.com/api/latest/metrics/#submit-metrics
-    :param oci_timestamp:
-    :return:
-    """
-
-    # positive skew is expected
-    timestamp_sec = int(timestamp_ms / 1000)
-    delta_sec = get_now_timestamp() - timestamp_sec
-
-    if (delta_sec > 0 and delta_sec > ONE_HOUR_SEC):
-        logging.getLogger().warning('timestamp {} too far in the past per DataDog'.format(timestamp_ms))
-
-    if (delta_sec < 0 and abs(delta_sec) > TEN_MINUTES_SEC):
-        logging.getLogger().warning('timestamp {} too far in the future per DataDog'.format(timestamp_ms))
-
-    return timestamp_sec
+    return combined_list
 
 
-def get_metric_points(log_record: dict):
-    """
-    :param log_record:
-    :return: an array of arrays where each array is a datapoint scalar pair
-    """
+def assemble_otel_attribute(k, v):
+    if v is None:
+        logging.debug(f'dictionary key {k} / value is is None ... ignoring because PROTOBUF does not support null')
+        return KeyValue(key=k, value=None)
 
-    result = []
+    if isinstance(v, int):
+        return KeyValue(key=k, value=AnyValue(int_value=v))
 
-    datapoints = get_dictionary_value(dictionary=log_record, target_key='datapoints')
-    for point in datapoints:
-        dd_point = {'timestamp': adjust_metric_timestamp(point.get('timestamp')),
-                    'value': point.get('value')}
+    elif isinstance(v, str):
+        return KeyValue(key=k, value=AnyValue(string_value=v))
 
-        result.append(dd_point)
+    elif isinstance(v, bool):
+        return KeyValue(key=k, value=AnyValue(bool_value=v))
 
-    return result
+    elif isinstance(v, float):
+        return KeyValue(key=k, value=AnyValue(double_value=v))
 
+    elif isinstance(v, list):
+        return assemble_otel_attribute_list_value(k, v)
 
-def get_metric_tags(log_record: dict):
-    """
-    Assembles tags from selected metric attributes.
-    See https://docs.datadoghq.com/getting_started/tagging/
-    :param log_record: the log record to scan
-    :return: string of comma-separated, key:value pairs matching DataDog tag format
-    """
+    elif isinstance(v, dict):
+        return assemble_otel_attribute_dictionary_value(k, v)
 
-    result = []
-
-    for tag in get_metric_tag_set():
-        value = get_dictionary_value(dictionary=log_record, target_key=tag)
-        if value is None:
-            continue
-
-        if isinstance(value, str) and ':' in value:
-            logging.getLogger().warning('tag contains a \':\' / ignoring {} ({})'.format(key, value))
-            continue
-
-        tag = '{}:{}'.format(tag, value)
-        result.append(tag)
-
-    return result
+    else:
+        raise ValueError(f'dictionary key {k} / value is not supported yet / {v}')
 
 
-def get_metric_tag_set():
-    """
-    :return: the set metric payload keys that we would like to have converted to tags.
-    """
+def assemble_otel_attribute_dictionary_value(k, v):
+    kvlist = []
 
-    global metric_tag_set
+    for k2, v2 in v.items():
+        kvlist.append(assemble_otel_attribute(k2, v2))
 
-    if len(metric_tag_set) == 0 and metric_tag_keys:
-        split_and_stripped_tags = [x.strip() for x in metric_tag_keys.split(',')]
-        metric_tag_set.update(split_and_stripped_tags)
-        logging.getLogger().debug("tag key set / {} ".format (metric_tag_set))
-
-    return metric_tag_set
+    key_value = KeyValue(key=k, value=AnyValue(kvlist_value=KeyValueList(values=kvlist)))
+    return key_value
 
 
-def send_to_datadog (event_list):
-    """
-    Sends each transformed event to DataDog Endpoint.
-    :param event_list: list of events in DataDog format
-    :return: None
-    """
+def assemble_otel_attribute_list_value(k, v):
+    values_list = []
+    for list_value in v:
+        if isinstance(list_value, int):
+            values_list.append(AnyValue(int_value=list_value))
 
-    if is_forwarding is False:
-        logging.getLogger().debug("DataDog forwarding is disabled - nothing sent")
-        return
+        elif isinstance(list_value, str):
+            values_list.append(AnyValue(string_value=list_value))
 
-    if 'v2' not in api_endpoint:
-        raise RuntimeError('Requires API endpoint version "v2": "{}"'.format(api_endpoint))
+        elif isinstance(list_value, bool):
+            values_list.append(AnyValue(bool_value=list_value))
 
-    # creating a session and adapter to avoid recreating
-    # a new connection pool between each POST call
+        elif isinstance(list_value, float):
+            values_list.append(AnyValue(double_value=list_value))
 
-    try:
-        session = requests.Session()
-        adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10)
-        session.mount('https://', adapter)
+        else:
+            raise ValueError(f'attribute_list assigned to key {k} / value is not supported yet / {v}')
 
-        for event in event_list:
-            api_headers = {'Content-type': 'application/json', 'DD-API-KEY': api_key}
-            logging.getLogger().debug("json to datadog: {}".format (json.dumps(event)))
-            response = session.post(api_endpoint, data=json.dumps(event), headers=api_headers)
+    array_value = KeyValue(key=k, value=AnyValue(array_value=ArrayValue(values=values_list)))
+    return array_value
 
-            if response.status_code != 202:
-                raise Exception ('error {} sending to DataDog: {}'.format(response.status_code, response.reason))
 
-    finally:
-        session.close()
+def assemble_otel_scope_logs(log_record: dict):
+    inst_scope = assemble_otel_instrumentation_scope(log_record)
+    log_records = assemble_otel_log_records(log_record)
+    scope_metrics = ScopeMetrics(scope=inst_scope, metrics=metrics)
+    scope_logs = ScopeLogs(scope=inst_scope, log_records=log_records)
+    return [scope_logs]
+
+
+def assemble_otel_log_records(log_record: dict):
+    attributes = assemble_otel_attributes(log_record, ['logContent', 'datetime'])
+    log_record = LogRecord(time_unix_nano=0, observed_time_unix_nano=0, attributes=attributes)
+    return [log_record]
+
+
+def assemble_otel_instrumentation_scope(log_record: dict):
+    attributes = assemble_otel_attributes(log_record, ['oracle'])
+    inst_scope = InstrumentationScope(attributes=attributes)
+    return inst_scope
 
 
 def get_dictionary_value(dictionary: dict, target_key: str):
@@ -264,9 +173,6 @@ def get_dictionary_value(dictionary: dict, target_key: str):
     :param target_key: the key we are looking for
     :return: If a target_key exists multiple times in the dictionary, the first one found will be returned.
     """
-
-    if dictionary is None:
-        raise Exception('dictionary None for key'.format(target_key))
 
     target_value = dictionary.get(target_key)
     if target_value:
@@ -286,28 +192,51 @@ def get_dictionary_value(dictionary: dict, target_key: str):
                         return target_value
 
 
+def send_to_otel_collector(logs_data_json):
+    """
+    """
+
+    # creating a session and adapter to avoid recreating
+    # a new connection pool between each POST call
+
+    session = None
+
+    try:
+        session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10)
+        session.mount('https://', adapter)
+
+        http_headers = {'Content-type': 'application/json'}
+        post_response = session.post(api_endpoint, data=json.dumps(logs_data_json), headers=http_headers)
+        if post_response.status_code != 200:
+            raise Exception(f'error sending to OpenTelemetry Collector / {post_response.text}')
+
+    finally:
+        session.close()
+
+
+def serialize_otel_message_to_json(logs_data: LogsData):
+    logs_data_dict_obj = MessageToDict(logs_data)
+    logs_data_json = json.dumps(logs_data_dict_obj, indent=4)
+    return logs_data_json
+
+
 def local_test_mode(filename):
     """
-    This routine reads a local json metrics file, converting the contents to DataDog format.
-    :param filename: cloud events json file exported from OCI Logging UI or CLI.
-    :return: None
     """
 
-    logging.getLogger().info("local testing started")
+    logging.info("local testing started")
 
     with open(filename, 'r') as f:
-        transformed_results = list()
+        contents = json.load(f)
+        if isinstance(contents, dict):
+            contents = [contents]
 
-        for line in f:
-            event = json.loads(line)
-            logging.getLogger().debug(json.dumps(event, indent=4))
-            transformed_result = transform_metric_to_datadog_format(event)
-            transformed_results.append(transformed_result)
+        logs_data = assemble_otel_metrics_data(event_list=contents)
+        logs_data_json = serialize_otel_message_to_json(logs_data)
+        logging.info(logs_data_json)
 
-        logging.getLogger().debug(json.dumps(transformed_results, indent=4))
-        send_to_datadog(event_list=transformed_results)
-
-    logging.getLogger().info("local testing completed")
+    logging.info("local testing completed")
 
 
 """
@@ -315,5 +244,7 @@ Local Debugging
 """
 
 if __name__ == "__main__":
-    local_test_mode('oci-metrics-test-file.json')
+    # local_test_mode('../data/oci_log.json')
+    # local_test_mode('../data/audit.1.json')
+    local_test_mode('../data/oci_logs.json')
 
