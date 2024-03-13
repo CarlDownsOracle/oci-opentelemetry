@@ -7,5 +7,5 @@ _site
 *.json
 venv/
 archive/
-test_data/
 HOLD*
+README.dev.md
