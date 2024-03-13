@@ -174,8 +174,9 @@ def assemble_otel_scope_logs(log_record: dict):
 
 def assemble_otel_log_records(log_record: dict):
 
+    datetime = log_record.get('datetime')
     attributes = assemble_otel_attributes(log_record, LOG_RECORD_ATTRIBUTES)
-    log_record = LogRecord(time_unix_nano=0, observed_time_unix_nano=0, attributes=attributes)
+    log_record = LogRecord(time_unix_nano=datetime, observed_time_unix_nano=0, attributes=attributes)
     return [log_record]
 
 
