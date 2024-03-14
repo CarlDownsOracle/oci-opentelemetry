@@ -11,6 +11,20 @@ OpenTelemetry's protobuf contract.  Transformed messages are then sent to an `OT
 ![OTEL Collector](../images/otel-collector.png)
 
 ---
+## Solution Architecture
+
+
+![OTEL Collector](../images/architecture.png)
+
+Here is the basic architecture and flow of data from beginning to end:
+
+* OCI services emit log data which is managed by the `Logging Service`.
+* OCI IAM emits audit log data which is managed by the `Audit Service`.
+* The Logging and Audit Services can feed log data events to a `Service Connector`.
+* The `Service Connector` invokes a `Function` which transforms the metric data payload to `OpenTelemetry` protobuf messages format and posts the transformed payload to the `OTEL Collector` REST API.
+* The `OTEL Collector` ingests the metrics, forwarding them on to downstream `SIEM` / monitoring.
+
+---
 
 ## OpenTelemetry Logs Specification
 

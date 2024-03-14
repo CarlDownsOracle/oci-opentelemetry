@@ -14,6 +14,6 @@ metric events to OpenTelemetry's API contract.  Transformed messages are then se
 
 
 ---
-### [Logging Service](oci-log-otel/README.md)
-### [Monitoring Service](oci-metrics-otel/README.md)
-### [Tag Enrichment](oci-tag-enrich/README.md)
+### [Exporting OCI Logging Service Logs to An OpenTelemetry Collector](oci-log-otel/README.md)
+### [Exporting OCI Monitoring Service Metrics to OTEL Collectors](oci-metrics-otel/README.md)
+### [Enriching Log and Metric Event Payloads with OCI Tags](oci-tag-enrich/README.md)

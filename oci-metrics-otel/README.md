@@ -12,21 +12,25 @@ OpenTelemetry's protobuf contract.  Transformed messages are then sent to an `OT
 
 ![OTEL Collector](../images/otel-collector.png)
 
-### Prerequisites
 
-If you’re new to Functions, get familiar by running through 
-the [Quick Start guide on OCI Functions](http://docs.oracle.com/en-us/iaas/Content/Functions/Tasks/functionsquickstartguidestop.htm) before proceeding.
+## OpenTelemetry Metrics Specification
+
+* [Metrics Specification](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/metrics)
+* [Metrics Data Model](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/data-model.md)
+
 
 ---
 ## Solution Architecture
 
 
+![OTEL Collector](../images/architecture.png)
+
 Here is the basic architecture and flow of data from beginning to end:
 
-* OCI services emit metric data which is captured by the Monitoring service.
-* The Monitoring Service feeds metric data events to a Service Connector.
-* The Service Connector invokes a Function which transforms the metric data payload to OpenTelemetry's protobuf messages format and posts the transformed payload to the OTEL Collector REST API.
-* The Collector ingests the metrics, forwarding them on to downstream SIEM / monitoring.
+* OCI services emit metric data which is captured by the `Monitoring Service`.
+* The Monitoring Service feeds metric data events to a `Service Connector`.
+* The `Service Connector` invokes a `Function` which transforms the metric data payload to `OpenTelemetry` protobuf messages format and posts the transformed payload to the `OTEL Collector` REST API.
+* The `OTEL Collector` ingests the metrics, forwarding them on to downstream `SIEM` / monitoring.
 
 ---
 ## Monitoring Service

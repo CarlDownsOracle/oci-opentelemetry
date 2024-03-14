@@ -1,4 +1,4 @@
-# Service Connector Functions Task - How to Enrich Event Payloads with OCI Tags
+# Enriching Log and Metric Event Payloads with OCI Tags
 
 ---
 
