@@ -19,23 +19,6 @@ from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 
 API_ENDPOINT = os.getenv('OTEL_COLLECTOR_LOGS_API_ENDPOINT', 'not-configured')
 
-"""
-Default Mapping:
-
-LogSource
-- oracle
-
-- LogScope
-- (none)
-
-LogRecord
-- id
-- source
-- time
-- data
-
-"""
-
 # Mapping behavior
 
 OTEL_RESOURCE_ATTR_MAP = os.getenv('OTEL_RESOURCE_ATTR_MAP', 'oracle').split(" ")
