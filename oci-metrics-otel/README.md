@@ -1,4 +1,4 @@
-# Exporting OCI Monitoring Service Metrics to Datadog
+# Exporting OCI Monitoring Service Metrics to OTEL Collectors
 
 ---
 
