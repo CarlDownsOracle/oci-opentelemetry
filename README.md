@@ -8,7 +8,8 @@ Let's take a look at bringing Oracle Cloud Infrastructure (OCI)’s rich observa
 3rd systems.  These function samples show how to perform simple JSON-to-JSON transformation of the OCI log and 
 metric events to OpenTelemetry's API contract.  Transformed messages are then sent to an `OTEL Collector`. 
 
-[See Collector QuickStart](https://opentelemetry.io/docs/collector/quick-start/)
+See the [OTEL Collector Documentation](https://opentelemetry.io/docs/collector/)
+and [QuickStart](https://opentelemetry.io/docs/collector/quick-start/).
 
 ![OTEL Collector](images/otel-collector.png)
 
