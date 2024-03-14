@@ -38,7 +38,7 @@ exactly that.  See [Service Connector Hub documentation](https://docs.oracle.com
 ---
 ## Functions Service
 
-I need to transform between the raw metrics formats and some way to make the Datadog API calls. The 
+I need to transform between the raw metrics formats and some way to make the OTEL Connector API calls. The 
 [OCI Functions Service](http://docs.oracle.com/en-us/iaas/Content/Functions/Concepts/functionsoverview.htm) is a 
 natural fit for the task. Functions integrate nicely with Service Connector Hub as a target and can scale up
 depending on the demand.  That lets me focus on writing the logic needed without needing to address how to 
