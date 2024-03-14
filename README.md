@@ -5,7 +5,7 @@
 ## Overview
 
 Let's take a look at bringing Oracle Cloud Infrastructure (OCI)’s rich observability data to OpenTelemetry-compatible
-3rd systems.  These function samples show how to perform simple JSON-to-JSON transformation of the OCI log and 
+3rd party systems.  These function samples show how to perform simple JSON-to-JSON transformation of the OCI log and 
 metric events to OpenTelemetry's API contract.  Transformed messages are then sent to an `OTEL Collector`. 
 
 See the [OTEL Collector Documentation](https://opentelemetry.io/docs/collector/)

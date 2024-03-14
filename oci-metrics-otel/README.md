@@ -1,18 +1,7 @@
 # Exporting OCI Monitoring Service Metrics to OTEL Collectors
 
 ---
-
-## Overview
-
-Let's take a look at bringing Oracle Cloud Infrastructure (OCI)’s rich Metrics resources OpenTelemetry-compatible
-3rd systems.  This function sample shows how to perform simple JSON-to-JSON transformation of the OCI metric event to
-OpenTelemetry's protobuf contract.  Transformed messages are then sent to an `OTEL Collector`.
-
----
 ## Solution Architecture
-
-
-![OTEL Collector](../images/architecture.png)
 
 Here is the basic architecture and flow of data from beginning to end:
 
@@ -20,6 +9,10 @@ Here is the basic architecture and flow of data from beginning to end:
 * The Monitoring Service feeds metric data events to a `Service Connector`.
 * The `Service Connector` invokes a `Function` which transforms the metric data payload to `OpenTelemetry` protobuf messages format and posts the transformed payload to the `OTEL Collector` REST API.
 * The `OTEL Collector` ingests the metrics, forwarding them on to downstream `SIEM` / monitoring.
+
+--- 
+
+![OTEL Collector](../images/architecture.png)
 
 ---
 
