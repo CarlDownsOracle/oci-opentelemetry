@@ -1,5 +1,16 @@
 # Exporting OCI Logging Service Logs to An OpenTelemetry Collector
 
+## Overview
+
+Let's take a look at bringing Oracle Cloud Infrastructure (OCI)’s rich Logging resources OpenTelemetry-compatible
+3rd systems. This function sample shows how to perform simple JSON-to-JSON transformation of the OCI metric events to
+OpenTelemetry's protobuf messages.  Transformed messages are then sent to an `OTEL Collector` using the http receiver
+(not grpc) as JSON.
+
+[See Collector QuickStart](https://opentelemetry.io/docs/collector/quick-start/)
+
+![OTEL Collector](../images/otel-collector.png)
+
 ---
 
 ## OpenTelemetry Logs Specification

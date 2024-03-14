@@ -5,10 +5,7 @@
 ## Overview
 
 Let's take a look at bringing Oracle Cloud Infrastructure (OCI)’s rich Metrics resources OpenTelemetry-compatible
-3rd systems.  The OpenTelemetry protocol allows you to characterize each metric using attributes, 
-which is essential to aggregating and correlating data as needed for its monitoring, reporting, dashboards, and so on.
-
-This function sample shows how to perform simple JSON-to-JSON transformation of the OCI metric events to
+3rd systems.  This function sample shows how to perform simple JSON-to-JSON transformation of the OCI metric events to
 OpenTelemetry's protobuf messages.  Transformed messages are then sent to an `OTEL Collector` using the http receiver
 (not grpc) as JSON.
 
