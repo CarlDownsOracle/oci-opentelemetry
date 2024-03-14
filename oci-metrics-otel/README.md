@@ -58,7 +58,7 @@ A key requirement of course is the mapping of OCI to OpenTelemetry format.  Let'
 message payload formats, what the mapping needs to accomplish, and see what the resulting transformed message 
 looks like.
 
-Example OCI Metrics Payload:
+#### Example OCI Metrics Payload:
     
       {
         "namespace": "oci_vcn",
@@ -82,24 +82,19 @@ Example OCI Metrics Payload:
       }
 
 
-#### Map these OCI keys to OTEL metric resource:
-  * `dimensions` 
-  * `compartmentId` 
+#### Map these OCI keys to OTEL attributes:
 
-Note that `dimensions` is itself an object in the OCI payload.  All contents of the
-dimensions object will be copied to the `resource` `attributes`.
+    OTEL_METRIC_RESOURCE_ATTR_MAP = 'dimensions compartmentId'
+    OTEL_METRIC_SCOPE_ATTR_MAP = 'namespace'
+    OTEL_DATAPOINT_ATTR_MAP = 'count'
 
-#### Map these OCI keys to OTEL metric scope:
-* `namespace`
 
-This one attribute will be copied to the `scope` `attributes`.
+Notice that `dimensions` is itself an object in the OCI payload.  All contents of the
+dimensions object will be copied.
 
-#### Map these OCI keys to OTEL datapoint:
-* `count`	
 
-This one attribute will be copied to the `dataPoints` `attributes`.
 
-Resulting OTEL Output:
+#### Resulting OTEL Output:
 
       {
         "resourceMetrics": [
