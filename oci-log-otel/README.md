@@ -39,14 +39,14 @@ Example resulting output:
           },
           "id": "159f15e5",
           "oracle": {
-            "compartmentid": "ocid1.compartment.oc1..aaaaaaaap3ng5unawee4vgjyynn3l4htp2ejqy3a5rxkra3zfxzwyc6crraa",
+            "compartmentid": "ocid1.compartment.oc1....",
             "ingestedtime": "2023-07-11T20:42:24.573Z",
-            "loggroupid": "ocid1.loggroup.oc1.phx.amaaaaaaa752xmyaxu5d2snrezxfsrms3g5rnad3d6mu5aj4pum6d3er2ueq",
-            "logid": "ocid1.log.oc1.phx.amaaaaaaa752xmyaewrujrk5utqfggr64k6b2m3iedpi2dnvet2lnljtnoqa",
-            "tenantid": "ocid1.tenancy.oc1..aaaaaaaaebxriz7y7egelwfkjdbnjdvq6k5vaaxo3o35fvfzf3g7ryvxevka",
-            "vniccompartmentocid": "ocid1.compartment.oc1..aaaaaaaap3ng5unawee4vgjyynn3l4htp2ejqy3a5rxkra3zfxzwyc6crraa",
-            "vnicocid": "ocid1.vnic.oc1.phx.abyhqljr47ao7pa5gxnwnygbjjxxulmx3hazqupmy5pya2ijmfyqedrxge2a",
-            "vnicsubnetocid": "ocid1.subnet.oc1.phx.aaaaaaaac4urlt7pz44x6pgolftcvmpbnmw5ze3tndjemwciar6ox4s6gs7q"
+            "loggroupid": "ocid1.loggroup.oc1.phx...",
+            "logid": "ocid1.log.oc1.phx....",
+            "tenantid": "ocid1.tenancy.oc1.....",
+            "vniccompartmentocid": "ocid1.compartment.oc1.....",
+            "vnicocid": "ocid1.vnic.oc1.phx....",
+            "vnicsubnetocid": "ocid1.subnet.oc1.phx.a..."
           },
           "source": "-",
           "specversion": "1.0",
@@ -87,7 +87,7 @@ Output:
                   {
                     "key": "compartmentid",
                     "value": {
-                      "stringValue": "ocid1.compartment.oc1..aaaaaaaap3ng5unawee4vgjyynn3l4htp2ejqy3a5rxkra3zfxzwyc6crraa"
+                      "stringValue": "ocid1.compartment.oc1....."
                     }
                   },
                   {
@@ -99,37 +99,37 @@ Output:
                   {
                     "key": "loggroupid",
                     "value": {
-                      "stringValue": "ocid1.loggroup.oc1.phx.amaaaaaaa752xmyaxu5d2snrezxfsrms3g5rnad3d6mu5aj4pum6d3er2ueq"
+                      "stringValue": "ocid1.loggroup.oc1.phx...."
                     }
                   },
                   {
                     "key": "logid",
                     "value": {
-                      "stringValue": "ocid1.log.oc1.phx.amaaaaaaa752xmyaewrujrk5utqfggr64k6b2m3iedpi2dnvet2lnljtnoqa"
+                      "stringValue": "ocid1.log.oc1.phx...."
                     }
                   },
                   {
                     "key": "tenantid",
                     "value": {
-                      "stringValue": "ocid1.tenancy.oc1..aaaaaaaaebxriz7y7egelwfkjdbnjdvq6k5vaaxo3o35fvfzf3g7ryvxevka"
+                      "stringValue": "ocid1.tenancy.oc1....."
                     }
                   },
                   {
                     "key": "vniccompartmentocid",
                     "value": {
-                      "stringValue": "ocid1.compartment.oc1..aaaaaaaap3ng5unawee4vgjyynn3l4htp2ejqy3a5rxkra3zfxzwyc6crraa"
+                      "stringValue": "ocid1.compartment.oc1....."
                     }
                   },
                   {
                     "key": "vnicocid",
                     "value": {
-                      "stringValue": "ocid1.vnic.oc1.phx.abyhqljr47ao7pa5gxnwnygbjjxxulmx3hazqupmy5pya2ijmfyqedrxge2a"
+                      "stringValue": "ocid1.vnic.oc1.phx...."
                     }
                   },
                   {
                     "key": "vnicsubnetocid",
                     "value": {
-                      "stringValue": "ocid1.subnet.oc1.phx.aaaaaaaac4urlt7pz44x6pgolftcvmpbnmw5ze3tndjemwciar6ox4s6gs7q"
+                      "stringValue": "ocid1.subnet.oc1.phx...."
                     }
                   }
                 ]
