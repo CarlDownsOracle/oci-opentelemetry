@@ -9,3 +9,4 @@ venv/
 archive/
 HOLD*
 README.dev.md
+*.pptx
