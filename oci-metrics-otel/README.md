@@ -9,8 +9,12 @@ Let's take a look at bringing Oracle Cloud Infrastructure (OCI)’s rich Metrics
 which is essential to aggregating and correlating data as needed for its monitoring, reporting, dashboards, and so on.
 
 This function sample shows how to perform simple JSON-to-JSON transformation of the OCI metric events to
-OpenTelemetry's protobuf messages.  Transformed messages are then sent to an OTEL Collector using the http receiver
+OpenTelemetry's protobuf messages.  Transformed messages are then sent to an `OTEL Collector` using the http receiver
 (not grpc) as JSON.
+
+[See Collector QuickStart](https://opentelemetry.io/docs/collector/quick-start/)
+
+![OTEL Collector](../images/otel-collector.png)
 
 ### Prerequisites
 
