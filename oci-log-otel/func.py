@@ -20,22 +20,42 @@ from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 API_ENDPOINT = os.getenv('OTEL_COLLECTOR_LOGS_API_ENDPOINT', 'not-configured')
 
 """
-These settings generate a reasonable mapping:
+Default Mapping:
 
-    LOG_RESOURCE_ATTRIBUTES = 'source time oracle'
-    LOG_SCOPE_ATTRIBUTES = 'type'
-    LOG_RECORD_ATTRIBUTES = 'data id datetime'
+LogSource
+- oracle
+
+- LogScope
+- (none)
+
+LogRecord
+- id
+- source
+- time
+- data
+
 """
 
-LOG_RESOURCE_ATTRIBUTES = os.getenv('LOG_RESOURCE_ATTRIBUTES', 'source time oracle').split(" ")
-LOG_SCOPE_ATTRIBUTES = os.getenv('LOG_SCOPE_ATTRIBUTES', 'type').split(" ")
-LOG_RECORD_ATTRIBUTES = os.getenv('LOG_RECORD_ATTRIBUTES', 'id data datetime').split(" ")
+# Mapping behavior
+
+OTEL_RESOURCE_ATTR_MAP = os.getenv('OTEL_RESOURCE_ATTR_MAP', 'oracle').split(" ")
+OTEL_SCOPE_ATTR_MAP = os.getenv('OTEL_SCOPE_ATTR_MAP', '').split(" ")
+OTEL_LOG_RECORD_ATTR_MAP = os.getenv('OTEL_LOG_RECORD_ATTR_MAP', 'id source time type data').split(" ")
+
+# What happens if a mapped key is not found in the OCI payload?
+
+RAISE_MISSING_MAP_KEY = eval(os.getenv('RAISE_MISSING_MAP_KEY', "True"))
+LOG_MISSING_MAP_KEY = eval(os.getenv('LOG_MISSING_MAP_KEY', "True"))
+
+# Log the OCI and OTEL full record contents to OCI logging (not recommended in production!!)
+
+LOG_RECORD_CONTENT = eval(os.getenv('LOG_RECORD_CONTENT', "False"))
 
 # Set all registered loggers to the configured log_level
 
-logging_level = os.getenv('LOGGING_LEVEL', 'INFO')
+LOGGING_LEVEL = os.getenv('LOGGING_LEVEL', 'INFO')
 loggers = [logging.getLogger()] + [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-[logger.setLevel(logging.getLevelName(logging_level)) for logger in loggers]
+[logger.setLevel(logging.getLevelName(LOGGING_LEVEL)) for logger in loggers]
 
 
 def handler(ctx, data: io.BytesIO = None):
@@ -46,17 +66,24 @@ def handler(ctx, data: io.BytesIO = None):
     :return: plain text response indicating success or error
     """
 
-    preamble = "fn {} / events {} / logging level {}"
+    logging.info(f'LOGGING_LEVEL / {LOGGING_LEVEL}')
+    logging.info(f'RAISE_MISSING_MAP_KEY / {RAISE_MISSING_MAP_KEY}')
+    logging.info(f'LOG_MISSING_MAP_KEY / {LOG_MISSING_MAP_KEY}')
+    logging.info(f'LOG_RECORD_CONTENT / {LOG_RECORD_CONTENT}')
+    logging.info(f'OTEL_RESOURCE_ATTR_MAP / {OTEL_RESOURCE_ATTR_MAP}')
+    logging.info(f'OTEL_SCOPE_ATTR_MAP / {OTEL_SCOPE_ATTR_MAP}')
+    logging.info(f'OTEL_LOG_RECORD_ATTR_MAP / {OTEL_LOG_RECORD_ATTR_MAP}')
 
     try:
         event_list = json.loads(data.getvalue())
-        logging.info(preamble.format(ctx.FnName(), len(event_list), logging_level))
+        logging.info(f'fn {ctx.FnName()} / event count {len(event_list)}')
+
         logs_data = assemble_otel_logs_data(event_list=event_list)
         logs_data_json = serialize_otel_message_to_json(logs_data)
         send_to_otel_collector(logs_data_json=logs_data_json)
 
     except (Exception, ValueError) as ex:
-        logging.error('error handling logging payload: {}'.format(str(ex)))
+        logging.error('function error / {}'.format(str(ex)))
 
 
 def assemble_otel_logs_data(event_list: dict):
@@ -72,31 +99,43 @@ def assemble_otel_resource_logs_list(event_list: dict):
     for event in event_list:
         resource_logs = assemble_otel_resource_logs(log_record=event)
         resource_logs_list.append(resource_logs)
-        # logging.debug(resource_log)
 
     return resource_logs_list
 
 
 def assemble_otel_resource_logs(log_record: dict):
 
+    if LOG_RECORD_CONTENT is True:
+        logging.info(f'OCI log / {json.dumps(log_record)}')
+
     resource = assemble_otel_resource(log_record)
     scope_logs = assemble_otel_scope_logs(log_record)
     resource_logs = ResourceLogs(resource=resource, scope_logs=scope_logs)
+
+    if LOG_RECORD_CONTENT is True:
+        logging.info(f'OTEL log / {serialize_otel_message_to_json(resource_logs)}')
+
     return resource_logs
 
 
 def assemble_otel_resource(log_record: dict):
     
-    attributes = assemble_otel_attributes(log_record, LOG_RESOURCE_ATTRIBUTES)
+    attributes = assemble_otel_attributes(log_record, OTEL_RESOURCE_ATTR_MAP)
     resource = Resource(attributes=attributes)
     return resource
 
 
 def assemble_otel_attributes(log_record: dict, target_keys: list):
 
+    if len(target_keys) == 0:
+        return
+
     combined_list = []
 
     for target_key in target_keys:
+        if not target_key:
+            continue
+
         value = get_dictionary_value(log_record, target_key)
 
         if isinstance(value, dict):
@@ -111,7 +150,13 @@ def assemble_otel_attributes(log_record: dict, target_keys: list):
 def assemble_otel_attribute(k, v):
 
     if v is None:
-        logging.debug(f'dictionary key {k} / value is is None ... ignoring because PROTOBUF does not support null')
+        message = f'OCI log record key / {k} / has no value'
+        if RAISE_MISSING_MAP_KEY:
+            raise ValueError(message)
+
+        if LOG_MISSING_MAP_KEY:
+            logging.debug(message)
+
         return KeyValue(key=k, value=None)
 
     if isinstance(v, bool):
@@ -181,14 +226,14 @@ def assemble_otel_scope_logs(log_record: dict):
 def assemble_otel_log_records(log_record: dict):
 
     datetime = log_record.get('datetime')
-    attributes = assemble_otel_attributes(log_record, LOG_RECORD_ATTRIBUTES)
+    attributes = assemble_otel_attributes(log_record, OTEL_LOG_RECORD_ATTR_MAP)
     log_record = LogRecord(time_unix_nano=datetime, observed_time_unix_nano=0, attributes=attributes)
     return [log_record]
 
 
 def assemble_otel_scope(log_record: dict):
 
-    attributes = assemble_otel_attributes(log_record, LOG_SCOPE_ATTRIBUTES)
+    attributes = assemble_otel_attributes(log_record, OTEL_SCOPE_ATTR_MAP)
     inst_scope = InstrumentationScope(attributes=attributes)
     return inst_scope
 
@@ -234,17 +279,25 @@ def send_to_otel_collector(logs_data_json):
         session.mount('https://', adapter)
 
         http_headers = {'Content-type': 'application/json'}
-        post_response = session.post(API_ENDPOINT, data=json.dumps(logs_data_json), headers=http_headers)
-        if post_response.status_code != 200:
-            raise Exception(f'error sending to OpenTelemetry Collector / {post_response.text}')
+        post_response = session.post(API_ENDPOINT, data=logs_data_json, headers=http_headers)
+
+        if post_response.status_code not in [200, 202]:
+            raise RuntimeError(f'POST Error / {post_response.status_code} / {post_response.text}')
+        else:
+            logging.info(f'POST Success / {post_response.status_code} / {post_response.text}')
 
     finally:
         session.close()
 
 
-def serialize_otel_message_to_json(logs_data: LogsData):
+def serialize_otel_message_to_json(logs_data: LogsData, use_indention=False):
     logs_data_dict_obj = MessageToDict(logs_data)
-    logs_data_json = json.dumps(logs_data_dict_obj, indent=2)
+
+    if use_indention is True:
+        logs_data_json = json.dumps(logs_data_dict_obj, indent=2)
+    else:
+        logs_data_json = json.dumps(logs_data_dict_obj)
+
     return logs_data_json
 
 
@@ -260,7 +313,7 @@ def local_test_mode(filename):
             contents = [contents]
 
         logs_data = assemble_otel_logs_data(event_list=contents)
-        logs_data_json = serialize_otel_message_to_json(logs_data)
+        logs_data_json = serialize_otel_message_to_json(logs_data, use_indention=True)
         logging.info(logs_data_json)
 
     logging.info("local testing completed")
@@ -271,6 +324,14 @@ Local Debugging
 """
 
 if __name__ == "__main__":
+    logging.info(f'LOGGING_LEVEL / {LOGGING_LEVEL}')
+    logging.info(f'RAISE_MISSING_MAP_KEY / {RAISE_MISSING_MAP_KEY}')
+    logging.info(f'LOG_MISSING_MAP_KEY / {LOG_MISSING_MAP_KEY}')
+    logging.info(f'LOG_RECORD_CONTENT / {LOG_RECORD_CONTENT}')
+    logging.info(f'OTEL_RESOURCE_ATTR_MAP / {OTEL_RESOURCE_ATTR_MAP}')
+    logging.info(f'OTEL_SCOPE_ATTR_MAP / {OTEL_SCOPE_ATTR_MAP}')
+    logging.info(f'OTEL_LOG_RECORD_ATTR_MAP / {OTEL_LOG_RECORD_ATTR_MAP}')
+
     local_test_mode('../data/oci_log.json')
     # local_test_mode('../data/oci_log.2.json')
     # local_test_mode('../data/audit.1.json')
