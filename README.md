@@ -2,6 +2,6 @@
 
 ---
 
-### [Logging Service](oci-log-dd/README.md)
-### [Monitoring Service](oci-metrics-dd/README.md)
+### [Logging Service](oci-log-otel/README.md)
+### [Monitoring Service](oci-metrics-otel/README.md)
 ### [Service Connector / Enrichment Task](oci-tag-enrich/README.md)
