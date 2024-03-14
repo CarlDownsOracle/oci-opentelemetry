@@ -15,6 +15,6 @@ and [QuickStart](https://opentelemetry.io/docs/collector/quick-start/).
 
 
 ---
-### [Exporting OCI Logging Service Logs to An OpenTelemetry Collector](oci-log-otel/README.md)
-### [Exporting OCI Monitoring Service Metrics to OTEL Collectors](oci-metrics-otel/README.md)
-### [Enriching Log and Metric Event Payloads with OCI Tags](oci-tag-enrich/README.md)
+### [Exporting OCI Logs to OTEL Collectors](oci-log-otel/README.md)
+### [Exporting OCI Metrics to OTEL Collectors](oci-metrics-otel/README.md)
+### [Enriching Logs and Metrics with OCI Tags](oci-tag-enrich/README.md)
