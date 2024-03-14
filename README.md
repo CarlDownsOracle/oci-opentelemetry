@@ -11,6 +11,9 @@ metric events to OpenTelemetry's API contract.  Transformed messages are then se
 See the [OTEL Collector Documentation](https://opentelemetry.io/docs/collector/)
 and [QuickStart](https://opentelemetry.io/docs/collector/quick-start/).
 
+
+---
+
 ![OTEL Collector](images/otel-collector.png)
 
 
