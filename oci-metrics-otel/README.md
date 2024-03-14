@@ -8,17 +8,6 @@ Let's take a look at bringing Oracle Cloud Infrastructure (OCI)’s rich Metrics
 3rd systems.  This function sample shows how to perform simple JSON-to-JSON transformation of the OCI metric event to
 OpenTelemetry's protobuf contract.  Transformed messages are then sent to an `OTEL Collector`.
 
-[See Collector QuickStart](https://opentelemetry.io/docs/collector/quick-start/)
-
-![OTEL Collector](../images/otel-collector.png)
-
-
-## OpenTelemetry Metrics Specification
-
-* [Metrics Specification](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/metrics)
-* [Metrics Data Model](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/data-model.md)
-
-
 ---
 ## Solution Architecture
 
@@ -31,6 +20,13 @@ Here is the basic architecture and flow of data from beginning to end:
 * The Monitoring Service feeds metric data events to a `Service Connector`.
 * The `Service Connector` invokes a `Function` which transforms the metric data payload to `OpenTelemetry` protobuf messages format and posts the transformed payload to the `OTEL Collector` REST API.
 * The `OTEL Collector` ingests the metrics, forwarding them on to downstream `SIEM` / monitoring.
+
+---
+
+## OpenTelemetry Metrics Specification
+
+* [Metrics Specification](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/metrics)
+* [Metrics Data Model](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/data-model.md)
 
 ---
 ## Monitoring Service

@@ -6,10 +6,6 @@ Let's take a look at bringing Oracle Cloud Infrastructure (OCI)’s rich Logging
 3rd systems.  This function sample shows how to perform simple JSON-to-JSON transformation of the OCI log event to
 OpenTelemetry's protobuf contract.  Transformed messages are then sent to an `OTEL Collector`.
 
-[See Collector QuickStart](https://opentelemetry.io/docs/collector/quick-start/)
-
-![OTEL Collector](../images/otel-collector.png)
-
 ---
 ## Solution Architecture
 
@@ -39,7 +35,7 @@ Here is the basic architecture and flow of data from beginning to end:
 ### Behavior
 
 
-Example resulting output:
+Example Log Event:
 
       {
         "datetime": 1689108090000,
@@ -80,14 +76,13 @@ Example resulting output:
       }
 
 
-The OTEL Transformation with these Function Settings
+Example OTEL Transformation using these Function Settings
 
 Setting:
 
     OTEL_RESOURCE_ATTR_MAP = 'oracle'
-    OTEL_SCOPE_ATTR_MAP = (empty, no mapping)
-    OTEL_LOG_RECORD_ATTR_MAP = 'id, source, time, and type'
-
+    OTEL_SCOPE_ATTR_MAP = ''
+    OTEL_LOG_RECORD_ATTR_MAP = 'id source time type data'
 
 Output:
 
