@@ -10,6 +10,7 @@ import logging
 import os
 import requests
 from fdk import response
+from dateutil import parser
 
 from google.protobuf.internal.well_known_types import Timestamp
 from google.protobuf.json_format import MessageToDict
@@ -49,17 +50,17 @@ def handler(ctx, data: io.BytesIO = None):
     :return: plain text response indicating success or error
     """
 
-    logging.info(f'LOGGING_LEVEL / {LOGGING_LEVEL}')
-    logging.info(f'RAISE_MISSING_MAP_KEY / {RAISE_MISSING_MAP_KEY}')
-    logging.info(f'LOG_MISSING_MAP_KEY / {LOG_MISSING_MAP_KEY}')
-    logging.info(f'LOG_RECORD_CONTENT / {LOG_RECORD_CONTENT}')
-    logging.info(f'OTEL_RESOURCE_ATTR_MAP / {OTEL_RESOURCE_ATTR_MAP}')
-    logging.info(f'OTEL_SCOPE_ATTR_MAP / {OTEL_SCOPE_ATTR_MAP}')
-    logging.info(f'OTEL_LOG_RECORD_ATTR_MAP / {OTEL_LOG_RECORD_ATTR_MAP}')
+    logging.debug(f'LOGGING_LEVEL / {LOGGING_LEVEL}')
+    logging.debug(f'RAISE_MISSING_MAP_KEY / {RAISE_MISSING_MAP_KEY}')
+    logging.debug(f'LOG_MISSING_MAP_KEY / {LOG_MISSING_MAP_KEY}')
+    logging.debug(f'LOG_RECORD_CONTENT / {LOG_RECORD_CONTENT}')
+    logging.debug(f'OTEL_RESOURCE_ATTR_MAP / {OTEL_RESOURCE_ATTR_MAP}')
+    logging.debug(f'OTEL_SCOPE_ATTR_MAP / {OTEL_SCOPE_ATTR_MAP}')
+    logging.debug(f'OTEL_LOG_RECORD_ATTR_MAP / {OTEL_LOG_RECORD_ATTR_MAP}')
 
     try:
         event_list = json.loads(data.getvalue())
-        logging.info(f'fn {ctx.FnName()} / event count {len(event_list)}')
+        logging.info(f'fn {ctx.FnName()} / log event count {len(event_list)}')
 
         logs_data = assemble_otel_logs_data(event_list=event_list)
         logs_data_json = serialize_otel_message_to_json(logs_data)
@@ -207,11 +208,38 @@ def assemble_otel_scope_logs(log_record: dict):
 
 
 def assemble_otel_log_records(log_record: dict):
+    """
+    see https://opentelemetry.io/docs/specs/otel/logs/data-model/#field-timestamp
+    """
 
-    datetime = log_record.get('datetime')
+    time_str = get_dictionary_value(log_record, 'time')
+    time_unix_nano = get_unix_time_nano(time_str)
+
     attributes = assemble_otel_attributes(log_record, OTEL_LOG_RECORD_ATTR_MAP)
-    log_record = LogRecord(time_unix_nano=datetime, observed_time_unix_nano=0, attributes=attributes)
+    log_record = LogRecord(attributes=attributes)
+    log_record.time_unix_nano = time_unix_nano
+
     return [log_record]
+
+
+def get_unix_time_nano(timestamp_str: str):
+
+    timestamp_dt = parser.parse(timestamp_str)
+    timestamp_int = int(round(timestamp_dt.timestamp()))
+    return adjust_unix_time_to_nano(timestamp_int)
+
+
+def adjust_unix_time_to_nano(timestamp_int: int):
+    """
+    See nano unix date examples
+    https://opentelemetry.io/docs/specs/otel/protocol/file-exporter/#examples
+    """
+
+    # spec calls for 1*10^18
+    while timestamp_int < 1000000000000000000:
+        timestamp_int *= 10
+
+    return timestamp_int
 
 
 def assemble_otel_scope(log_record: dict):

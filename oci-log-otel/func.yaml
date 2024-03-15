@@ -1,6 +1,6 @@
 schema_version: 20180708
 name: oci-opentelemetry-logs
-version: 0.0.17
+version: 0.0.20
 runtime: python
 build_image: fnproject/python:3.9-dev
 run_image: fnproject/python:3.9

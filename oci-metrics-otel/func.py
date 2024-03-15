@@ -52,17 +52,17 @@ def handler(ctx, data: io.BytesIO = None):
 
     preamble = "fn {} / metric events {} / logging level {}"
 
-    logging.info(f'LOGGING_LEVEL / {LOGGING_LEVEL}')
-    logging.info(f'RAISE_MISSING_MAP_KEY / {RAISE_MISSING_MAP_KEY}')
-    logging.info(f'LOG_MISSING_MAP_KEY / {LOG_MISSING_MAP_KEY}')
-    logging.info(f'LOG_RECORD_CONTENT / {LOG_RECORD_CONTENT}')
-    logging.info(f'OTEL_METRIC_RESOURCE_ATTR_MAP / {OTEL_METRIC_RESOURCE_ATTR_MAP}')
-    logging.info(f'OTEL_METRIC_SCOPE_ATTR_MAP / {OTEL_METRIC_SCOPE_ATTR_MAP}')
-    logging.info(f'OTEL_DATAPOINT_ATTR_MAP / {OTEL_DATAPOINT_ATTR_MAP}')
+    logging.debug(f'LOGGING_LEVEL / {LOGGING_LEVEL}')
+    logging.debug(f'RAISE_MISSING_MAP_KEY / {RAISE_MISSING_MAP_KEY}')
+    logging.debug(f'LOG_MISSING_MAP_KEY / {LOG_MISSING_MAP_KEY}')
+    logging.debug(f'LOG_RECORD_CONTENT / {LOG_RECORD_CONTENT}')
+    logging.debug(f'OTEL_METRIC_RESOURCE_ATTR_MAP / {OTEL_METRIC_RESOURCE_ATTR_MAP}')
+    logging.debug(f'OTEL_METRIC_SCOPE_ATTR_MAP / {OTEL_METRIC_SCOPE_ATTR_MAP}')
+    logging.debug(f'OTEL_DATAPOINT_ATTR_MAP / {OTEL_DATAPOINT_ATTR_MAP}')
 
     try:
         event_list = json.loads(data.getvalue())
-        logging.info(f'fn {ctx.FnName()} / event count {len(event_list)}')
+        logging.info(f'fn {ctx.FnName()} / metric event count {len(event_list)}')
 
         logs_data = assemble_otel_metrics_data(event_list=event_list)
         logs_data_json = serialize_otel_message_to_json(logs_data)
@@ -91,9 +91,16 @@ def assemble_otel_resource_metrics_list(event_list: dict):
 
 def assemble_otel_resource_metrics(log_record: dict):
 
+    if LOG_RECORD_CONTENT is True:
+        logging.info(f'OCI metric / {json.dumps(log_record)}')
+
     resource = assemble_otel_resource(log_record)
     scope_metrics = assemble_otel_scope_metrics(log_record)
     resource_metrics = ResourceMetrics(resource=resource, scope_metrics=scope_metrics)
+
+    if LOG_RECORD_CONTENT is True:
+        logging.info(f'OTEL metric / {serialize_otel_message_to_json(resource_metrics)}')
+
     return resource_metrics
 
 
@@ -116,10 +123,10 @@ def assemble_otel_metrics(log_record: dict):
     metrics = []
     oci_datapoints = get_dictionary_value(log_record, 'datapoints')
     for oci_datapoint in oci_datapoints:
-
+        timestamp = adjust_unix_time_to_nano(oci_datapoint.get('timestamp'))
         attributes = assemble_otel_attributes(oci_datapoint, OTEL_DATAPOINT_ATTR_MAP)
         data_point = NumberDataPoint(attributes=attributes)
-        data_point.start_time_unix_nano = oci_datapoint.get('timestamp')
+        data_point.time_unix_nano = timestamp
         data_point.as_double = float(oci_datapoint.get('value'))
         unit = unit
         gauge = Gauge(data_points=[data_point])
@@ -127,6 +134,19 @@ def assemble_otel_metrics(log_record: dict):
         metrics.append(metric)
 
     return metrics
+
+
+def adjust_unix_time_to_nano(timestamp_int: int):
+    """
+    See nano unix date examples
+    https://opentelemetry.io/docs/specs/otel/protocol/file-exporter/#examples
+    """
+
+    # spec calls for 1*10^18
+    while timestamp_int < 1000000000000000000:
+        timestamp_int *= 10
+
+    return timestamp_int
 
 
 def assemble_otel_scope(log_record: dict):
