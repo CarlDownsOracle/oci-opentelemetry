@@ -163,9 +163,16 @@ def assemble_otel_resource(log_record: dict):
 
 
 def assemble_otel_attributes(log_record: dict, target_keys: list):
+
+    if len(target_keys) == 0:
+        return
+
     combined_list = []
 
     for target_key in target_keys:
+        if not target_key:
+            continue
+
         value = get_dictionary_value(log_record, target_key)
 
         if isinstance(value, dict):
@@ -178,6 +185,7 @@ def assemble_otel_attributes(log_record: dict, target_keys: list):
 
 
 def assemble_otel_attribute(k, v):
+
     if v is None:
         message = f'OCI log record key / {k} / has no value'
         if RAISE_MISSING_MAP_KEY:
@@ -201,10 +209,12 @@ def assemble_otel_attribute(k, v):
         return KeyValue(key=k, value=AnyValue(double_value=v))
 
     elif isinstance(v, list):
-        return assemble_otel_attribute_list_value(k, v)
+        array_value = assemble_otel_attribute_list_value(k, v)
+        return KeyValue(key=k, value=AnyValue(array_value=array_value))
 
     elif isinstance(v, dict):
-        return assemble_otel_attribute_dictionary_value(k, v)
+        kvlist_value = assemble_otel_attribute_dictionary_value(k, v)
+        return KeyValue(key=k, value=AnyValue(kvlist_value=kvlist_value))
 
     else:
         raise ValueError(f'dictionary key {k} / value is not supported yet / {v}')
@@ -217,8 +227,7 @@ def assemble_otel_attribute_dictionary_value(k, v):
     for k2, v2 in v.items():
         kvlist.append(assemble_otel_attribute(k2, v2))
 
-    key_value = KeyValue(key=k, value=AnyValue(kvlist_value=KeyValueList(values=kvlist)))
-    return key_value
+    return KeyValueList(values=kvlist)
 
 
 def assemble_otel_attribute_list_value(k, v):
@@ -237,11 +246,18 @@ def assemble_otel_attribute_list_value(k, v):
         elif isinstance(list_value, float):
             values_list.append(AnyValue(double_value=list_value))
 
+        elif isinstance(list_value, list):
+            array_value = assemble_otel_attribute_list_value(k, list_value)
+            values_list.append(AnyValue(array_value=array_value))
+
+        elif isinstance(list_value, dict):
+            kvlist_value = assemble_otel_attribute_dictionary_value(k, list_value)
+            values_list.append(AnyValue(kvlist_value=kvlist_value))
+
         else:
             raise ValueError(f'attribute_list assigned to key {k} / value is not supported yet / {v}')
 
-    array_value = KeyValue(key=k, value=AnyValue(array_value=ArrayValue(values=values_list)))
-    return array_value
+    return ArrayValue(values=values_list)
 
 
 def get_dictionary_value(dictionary: dict, target_key: str):
@@ -330,13 +346,7 @@ Local Debugging
 """
 
 if __name__ == "__main__":
-    logging.info(f'LOGGING_LEVEL / {LOGGING_LEVEL}')
-    logging.info(f'RAISE_MISSING_MAP_KEY / {RAISE_MISSING_MAP_KEY}')
-    logging.info(f'LOG_MISSING_MAP_KEY / {LOG_MISSING_MAP_KEY}')
-    logging.info(f'LOG_RECORD_CONTENT / {LOG_RECORD_CONTENT}')
-    logging.info(f'OTEL_METRIC_RESOURCE_ATTR_MAP / {OTEL_METRIC_RESOURCE_ATTR_MAP}')
-    logging.info(f'OTEL_METRIC_SCOPE_ATTR_MAP / {OTEL_METRIC_SCOPE_ATTR_MAP}')
-    logging.info(f'OTEL_DATAPOINT_ATTR_MAP / {OTEL_DATAPOINT_ATTR_MAP}')
-    
     local_test_mode('../data/oci.metrics.json')
+    # OTEL_METRIC_RESOURCE_ATTR_MAP = ['dimensions', 'compartmentId', 'tags']
+    # local_test_mode('../data/oci.metrics.with.tags.json')
 
