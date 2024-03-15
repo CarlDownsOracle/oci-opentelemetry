@@ -110,14 +110,16 @@ You should see the same payload returned with `tags` added ... something like th
 
     {
       "vcnId": "ocid1.vcn.oc1.iad....",
-      "tags": {
-         "ocid1.vcn.oc1.iad....": {
-            "freeform": {
-               "VCN": "VCN-2023-12-19T19:10:27",
-               "app-test": "working"
-            }
-         }
-      }
+      "tags": [
+          {
+              "freeform": {
+                 "VCN": "VCN-2023-12-19T19:10:27",
+                 "app-test": "working"
+              },
+              "key": "vcnId",
+              "identifier": "ocid1.vcn.oc1.iad...."
+          }
+      ]
     }
 
 Now let's invoke the Function from the directory in cloud shell where the function code is located, 
@@ -125,6 +127,56 @@ passing in a simulated 'event' payload like so:
 
     echo -n '{"vcnId":"your-vcn-id-goes-here"}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
 
+### Tag Positioning 
+
+If you want to position the tags somewhere other than at the top, you can set `TAG_POSITION_KEY`. 
+If not empty, `TAG_POSITION_KEY` tells us where in the nested event JSON object to place the tag collection. 
+if the position is found in the event and the position is a dictionary 
+that does not contain a 'tags' key, then the code adds the collection there using 
+`TAG_ASSEMBLY_KEY` as the key.  If position is an array, then the tag collection is appended.
+
+As an example, let's assume we have defined function configuration `TAG_POSITION_KEY` as `"compliance"`.   Now simulate
+a call with a payload that has that position in it:
+
+    echo -n '{"vcnId":"your-vcn-id-goes-here", "compliance": {}}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
+
+You'll get this back:
+    
+    {
+      "vcnId": "ocid1.vcn.oc1.iad....",
+      "compliance": {
+          "tags": [
+              {
+                  "freeform": {
+                     "VCN": "VCN-2023-12-19T19:10:27",
+                     "app-test": "working"
+                  },
+                  "key": "vcnId",
+                  "identifier": "ocid1.vcn.oc1.iad...."
+              }
+          ]
+      }
+    }
+
+Positioning within a `"compliance"` an array:
+
+    echo -n '{"vcnId":"your-vcn-id-goes-here", "compliance": []}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
+
+... yields this result.  Notice that `TAG_ASSEMBLY_KEY` is dropped off.
+
+    {
+      "vcnId": "ocid1.vcn.oc1.iad....",
+        "compliance": [
+            {
+                "freeform": {
+                     "VCN": "VCN-2023-12-19T19:10:27",
+                     "app-test": "working"
+                },
+                "key": "vcnId",
+                "identifier": "ocid1.vcn.oc1.iad...."
+            }
+        ]
+    }
 
 ## Service Connector Setup
 
@@ -194,16 +246,17 @@ If the cache continues to creating issues, perhaps try
 
 Here are the supported variables.  The defaults are fine for most use cases.
 
-| Environment Variable  |                      Default                       | Purpose                                                                                                                                                                                                                                         |
-|-----------------------|:--------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| TARGET_OCID_KEYS                 | compartmentId,vcnId,subnetId,vnicId,vnicsubnetocid | Target OCIDs can exist anywhere in the event JSON payload, regardless of nested position.  Simply provide a comma-separated list of OCID keys (l-values) in the JSON.  The tags for each will be retrieved and added.                           |
-| TARGET_OCID_KEYS_WARN_IF_NOT_FOUND |                       False                        | A superset of 'target_ocid_keys' may be declared to cover a wide variety of heterogeneous event types.  Default of False suppresses log warnings when a target ocid key is not found in the event payload.                                      |
-| INCLUDE_FREEFORM_TAGS |                        True                        | Determine whether 'freeform' tags should be included.                                                                                                                                                                                           |
-| INCLUDE_DEFINED_TAGS  |                        True                        | Determine whether 'defined' tags should be included.                                                                                                                                                                                            |
-| INCLUDE_SYSTEM_TAGS   |                        True                        | Determine whether 'system' tages should be included.                                                                                                                                                                                            |
-| TAG_ASSEMBLY_KEY   |                        tags                        | The assembly key is the dictionary key used to add tags to the event payload.                                                                                                                                                                   |
-| TAG_ASSEMBLY_OMIT_EMPTY_RESULTS   |                        True                        | Determines whether empty tag dictionaries will be emitted for 'freeform', 'defined' or 'system' tag types when there are none found.  Downstream logic may expect to find these l-values even if empty. If that is the case, set this to False. |
-| LOGGING_LEVEL         |                        INFO                        | Controls function logging outputs.  Choices: INFO, WARN, CRITICAL, ERROR, DEBUG                                                                                                                                                                 |
+| Environment Variable               |                      Default                       | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                           |
+|------------------------------------|:--------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| TARGET_OCID_KEYS                   | compartmentId,vcnId,subnetId,vnicId,vnicsubnetocid | Target OCIDs can exist anywhere in the event JSON payload, regardless of nested position.  Simply provide a comma-separated list of OCID keys (l-values) in the JSON.  The tags for each will be retrieved and added.                                                                                                                                                                                                             |
+| TARGET_OCID_KEYS_WARN_IF_NOT_FOUND |                       False                        | A superset of 'target_ocid_keys' may be declared to cover a wide variety of heterogeneous event types.  Default of False suppresses log warnings when a target ocid key is not found in the event payload.                                                                                                                                                                                                                        |
+| INCLUDE_FREEFORM_TAGS              |                        True                        | Determine whether 'freeform' tags should be included.                                                                                                                                                                                                                                                                                                                                                                             |
+| INCLUDE_DEFINED_TAGS               |                        True                        | Determine whether 'defined' tags should be included.                                                                                                                                                                                                                                                                                                                                                                              |
+| INCLUDE_SYSTEM_TAGS                |                        True                        | Determine whether 'system' tages should be included.                                                                                                                                                                                                                                                                                                                                                                              |
+| TAG_ASSEMBLY_KEY                   |                        tags                        | The assembly key is the dictionary key used to add the tag collection to the event.                                                                                                                                                                                                                                                                                                                                               |
+| TAG_ASSEMBLY_OMIT_EMPTY_RESULTS    |                        True                        | Determines whether empty tag dictionaries will be emitted for 'freeform', 'defined' or 'system' tag types when there are none found.  Downstream logic may expect to find these l-values even if empty. If that is the case, set this to False.                                                                                                                                                                                   |
+| TAG_POSITION_KEY                   |                                                | If not empty, `TAG_POSITION_KEY` tells us where in the nested event JSON object to place the tag collection.  If the position is found in the event and the position is a dictionary that does not already contain a `TAG_POSITION_KEY` key, the collection is added there using `TAG_ASSEMBLY_KEY` as the key.  If position is an array, then the tag collection is appended to the array and the `TAG_POSITION_KEY` is ignored. |
+| LOGGING_LEVEL                      |                        INFO                        | Controls function logging outputs.  Choices: INFO, WARN, CRITICAL, ERROR, DEBUG                                                                                                                                                                                                                                                                                                                                                   |
 
 ----
 ## **OCI** Related Workshops

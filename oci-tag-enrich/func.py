@@ -36,10 +36,12 @@ the event payload.
 target_ocid_keys_warn_if_not_found = eval(os.getenv('TARGET_OCID_KEYS_WARN_IF_NOT_FOUND', "False"))
 
 """
-The TAG_ASSEMBLY_KEY is the l-value under which the tag assembly will be added to the event payload.
+The TAG_ASSEMBLY_KEY is the l-value under which the tag collection will be added to the event payload.
+The TAG_POSITION_KEY is optional.  If defined, it tells us where in the event object to place the tag collection.
 """
 
 tag_assembly_key = os.getenv('TAG_ASSEMBLY_KEY', 'tags')
+tag_position_key = os.getenv('TAG_POSITION_KEY', None)
 
 """
 The TAG_ASSEMBLY_OMIT_EMPTY_RESULTS parameter Determines whether empty objects will be emitted 
@@ -120,12 +122,39 @@ def add_tags_to_payload(payload):
 
     if isinstance(payload, list):
         for event in payload:
-            event_tags = assemble_event_tags(event)
-            event[tag_assembly_key] = event_tags
+            tag_collection = assemble_event_tags(event)
+            position_tags_on_event(event, tag_collection)
 
     else:
-        event_tags = assemble_event_tags(payload)
-        payload[tag_assembly_key] = event_tags
+        tag_collection = assemble_event_tags(payload)
+        position_tags_on_event(payload, tag_collection)
+
+
+def position_tags_on_event(event, tag_collection: list):
+    """
+    Positions the collection object on the payload based on given rules.
+    """
+
+    # The 'tag_position_key' is optional.
+    # If not empty, it tells us where in the nested payload to place the tag collection.
+    # if position is found in the event and the position is a list or dictionary
+    # that does not contain a 'tags' key, then add the collection there using 'tag_assembly_key' as the key.
+
+    if tag_position_key:
+        position = get_dictionary_value(event, tag_position_key)
+        if position is not None:
+            if isinstance(position, dict):
+                if position.get(tag_assembly_key) is None:
+                    position[tag_assembly_key] = tag_collection
+                    return
+            elif isinstance(position, list):
+                position += tag_collection
+                return
+
+    # otherwise, default behavior is to add the collection
+    # at the root of the payload.
+
+    event[tag_assembly_key] = tag_collection
 
 
 def assemble_event_tags(event: dict):
@@ -137,7 +166,7 @@ def assemble_event_tags(event: dict):
     """
 
     global tag_cache
-    combined_tags = {}
+    combined_tags = []
 
     for target_ocid_key in target_ocid_keys:
 
@@ -158,32 +187,32 @@ def assemble_event_tags(event: dict):
         cached_tags = tag_cache.get(target_ocid)
         if cached_tags is not None:
             logging.debug(f'using cache / {target_ocid} / {cached_tags}')
-            combined_tags[target_ocid] = cached_tags
+            combined_tags.append(cached_tags)
             continue
 
-        ocid_tags = retrieve_ocid_tags(target_ocid)
-        combined_tags[target_ocid] = ocid_tags
+        ocid_tags = retrieve_ocid_tags(target_ocid_key, target_ocid)
+        combined_tags.append(ocid_tags)
         tag_cache[target_ocid] = ocid_tags
 
     logging.debug(f'combined_tags / {combined_tags}')
     return combined_tags
 
 
-def retrieve_ocid_tags(ocid):
+def retrieve_ocid_tags(target_ocid_key, target_ocid):
     """
     uses the OCI Search API to find the object metadata for the given ocid.
-    :param ocid:
-    :return: extracted tags for the given ocid.
+    :param target_ocid_key:
+    :param target_ocid:
+    :return: list of extracted tags for the given ocid including a kv pair for target_ocid_key:target_ocid
     """
 
-    ocid_tags = {}
+    tag_object = {}
+    if target_ocid is None:
+        return tag_object
 
-    if ocid is None:
-        return ocid_tags
-
-    logging.debug(f'searching / {ocid}')
+    logging.debug(f'searching / {target_ocid}')
     structured_search = oci.resource_search.models.StructuredSearchDetails(
-            query="query all resources where identifier = '{}'".format(ocid),
+            query="query all resources where identifier = '{}'".format(target_ocid),
             matching_context_type=oci.resource_search.models.SearchDetails.MATCHING_CONTEXT_TYPE_NONE,
             type='Structured')
 
@@ -195,17 +224,25 @@ def retrieve_ocid_tags(ocid):
         resource_summary_collection = search_response.data
         for resource_summary in resource_summary_collection.items:
 
-            if ocid != resource_summary.identifier:
-                raise Exception(f'identifier mismatch / {ocid} / {resource_summary.identifier}')
+            if target_ocid != resource_summary.identifier:
+                raise Exception(f'identifier mismatch / {target_ocid} / {resource_summary.identifier}')
 
             logging.debug(f'resource_summary / {resource_summary}')
 
-            collect_tags(ocid_tags, 'freeform', include_freeform_tags, resource_summary.freeform_tags)
-            collect_tags(ocid_tags, 'defined', include_defined_tags, resource_summary.defined_tags)
-            collect_tags(ocid_tags, 'system', include_system_tags, resource_summary.system_tags)
+            collect_tags(tag_object, 'freeform', include_freeform_tags, resource_summary.freeform_tags)
+            collect_tags(tag_object, 'defined', include_defined_tags, resource_summary.defined_tags)
+            collect_tags(tag_object, 'system', include_system_tags, resource_summary.system_tags)
 
-    logging.debug(f'ocid_tags / {ocid} / {ocid_tags}')
-    return ocid_tags
+            # if collect_tags returned any tags, also set the key, ocid and resource type in the
+            # tag object for easier programmatic access downstream.
+
+            if tag_object:
+                tag_object['key'] = target_ocid_key
+                tag_object['identifier'] = resource_summary.identifier
+                # tag_object['resource_type'] = resource_summary.resource_type
+
+    logging.debug(f'tags retrieved / {target_ocid_key} / {target_ocid} / {tag_object}')
+    return tag_object
 
 
 def collect_tags(dictionary, tag_type_key, inclusion_flag, results):
@@ -238,18 +275,18 @@ def get_dictionary_value(dictionary: dict, target_key: str):
         raise Exception(f'dictionary is None / {target_key}')
 
     target_value = dictionary.get(target_key)
-    if target_value:
+    if target_value is not None:
         return target_value
 
     for key, value in dictionary.items():
         if isinstance(value, dict):
             target_value = get_dictionary_value(dictionary=value, target_key=target_key)
-            if target_value:
+            if target_value is not None:
                 return target_value
 
         elif isinstance(value, list):
             for entry in value:
                 if isinstance(entry, dict):
                     target_value = get_dictionary_value(dictionary=entry, target_key=target_key)
-                    if target_value:
+                    if target_value is not None:
                         return target_value
