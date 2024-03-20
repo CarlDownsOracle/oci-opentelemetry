@@ -280,16 +280,16 @@ Output:
 
 Here are the supported variables:
 
-| Environment Variable            |        Default         | Purpose                                                                                                                         |
-|---------------------------------|:----------------------:|:--------------------------------------------------------------------------------------------------------------------------------|
-| OTEL_COLLECTOR_LOGS_API_ENDPOINT |     not-configured     | This is an HTTP protocol address with port, reachable from the Function Service.                                                |
-| OTEL_RESOURCE_ATTR_MAP          |         oracle         | mapping: transfer oracle (entire object) to resourceLogs attributes.                                                            |
-| OTEL_SCOPE_ATTR_MAP      |                        | mapping: None.                                                                                                                  |
-| OTEL_LOG_RECORD_ATTR_MAP        |         id source time type data          | mapping: transfer id, source, time, and type to logRecords.                                                                     |
-| RAISE_MISSING_MAP_KEY           |          True          | What happens if a mapped key is not found in the OCI payload?    Set this true to raise exception then a mapped key is missing. |
-| LOG_MISSING_MAP_KEY             |          True          | What happens if a mapped key is not found in the OCI payload?  Set this true to see what is missing.                            |
-| LOG_RECORD_CONTENT              |         False          | Log the OCI and OTEL full record contents to OCI logging (not recommended in production!!)                                      |
-| LOGGING_LEVEL                   |          INFO          | Controls function logging outputs.  Choices: INFO, WARN, CRITICAL, ERROR, DEBUG                                                 |
+| Environment Variable            |        Default         | Purpose                                                                                                                                                                                     |
+|---------------------------------|:----------------------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| OTEL_COLLECTOR_LOGS_API_ENDPOINT |     not-configured     | This is an HTTP protocol address with port, reachable from the Function Service. Note that the [otel-collector-config.yaml](../otel-collector-config.yaml) must have HTTP protocol enabled. |
+| OTEL_RESOURCE_ATTR_MAP          |         oracle         | mapping: transfer oracle (entire object) to resourceLogs attributes.                                                                                                                        |
+| OTEL_SCOPE_ATTR_MAP      |                        | mapping: None.                                                                                                                                                                              |
+| OTEL_LOG_RECORD_ATTR_MAP        |         id source time type data          | mapping: transfer id, source, time, and type to logRecords.                                                                                                                                 |
+| RAISE_MISSING_MAP_KEY           |          True          | What happens if a mapped key is not found in the OCI payload?    Set this true to raise exception then a mapped key is missing.                                                             |
+| LOG_MISSING_MAP_KEY             |          True          | What happens if a mapped key is not found in the OCI payload?  Set this true to see what is missing.                                                                                        |
+| LOG_RECORD_CONTENT              |         False          | Log the OCI and OTEL full record contents to OCI logging (not recommended in production!!)                                                                                                  |
+| LOGGING_LEVEL                   |          INFO          | Controls function logging outputs.  Choices: INFO, WARN, CRITICAL, ERROR, DEBUG                                                                                                             |
 
 
 
