@@ -28,7 +28,7 @@ Here are some useful OpenTelemetry resources:
 
 ---
 
-## Setting up OTEL Collector for Testing
+## Setting up OTEL Collector Testbed
 
 #### `WARNING`: These instructions are **NOT suitable for production environments!**
 
@@ -47,9 +47,9 @@ on your Compute node.
 
 ### Configure, start and test the Collector
 
-Follow the docker-compose section of [Install the Collector](https://opentelemetry.io/docs/collector/installation/) docs.
-Copy [otel-collector-config.yaml](./otel-collector-config.yaml) to your node.  This configuration enables 
-HTTP protocol ... **a must have** ... otherwise the Functions will work..
+Copy the `docker-compose.yaml` file found in the [Install the Collector](https://opentelemetry.io/docs/collector/installation/) docs
+to your Compute node.  Copy [otel-collector-config.yaml](./otel-collector-config.yaml) to your node.  This configuration enables 
+HTTP protocol ... **a must have** ... otherwise the Functions will NOT work.
 
 
 ### Start the Collector
@@ -69,9 +69,9 @@ Logging can be tested as well with [logs.json](https://github.com/open-telemetry
  
     curl -X POST -H "Content-Type: application/json" -d @logs.json -i localhost:4318/v1/logs
 
-View the logs:
+View docker-compose logs:
 
     sudo docker-compose logs
 
-If that is working, your OTEL Collector is ready to receive HTTP POST's from OCI Functions.
+If the logs and metrics are shown, your Testbed OTEL Collector is ready to receive HTTP POST's from OCI Functions.
 
