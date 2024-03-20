@@ -11,6 +11,11 @@ metric events to OpenTelemetry's API contract.  Transformed messages are then se
 See the [OTEL Collector Documentation](https://opentelemetry.io/docs/collector/)
 and [QuickStart](https://opentelemetry.io/docs/collector/quick-start/).
 
+### Using the HTTP Protocol
+
+The sample functions use HTTP protocol to connect with the collector.  Here is a sample collector config YAML.
+
+[otel-collector-config.yaml](./otel-collector-config.yaml)
 
 ---
 
