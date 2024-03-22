@@ -106,26 +106,26 @@ We will invoke the function by passing it a simulated event payload that looks l
       "vcnId": "ocid1.vcn.oc1.iad...."
     }
 
+Now let's invoke the Function from the directory in cloud shell where the function code is located, 
+passing in a simulated 'event' payload like so:
+
+    echo -n '{"vcnId":"your-vcn-id-goes-here"}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
+
 You should see the same payload returned with `tags` added ... something like this:
 
     {
       "vcnId": "ocid1.vcn.oc1.iad....",
       "tags": [
           {
+              "key": "vcnId",
+              "identifier": "ocid1.vcn.oc1.iad....",
               "freeform": {
                  "VCN": "VCN-2023-12-19T19:10:27",
                  "app-test": "working"
-              },
-              "key": "vcnId",
-              "identifier": "ocid1.vcn.oc1.iad...."
+              }
           }
       ]
     }
-
-Now let's invoke the Function from the directory in cloud shell where the function code is located, 
-passing in a simulated 'event' payload like so:
-
-    echo -n '{"vcnId":"your-vcn-id-goes-here"}' | fn invoke tag-enrichment-app oci-tag-enrichment-task
 
 ### Tag Positioning 
 
@@ -147,12 +147,12 @@ You'll get this back:
       "compliance": {
           "tags": [
               {
+                  "key": "vcnId",
+                  "identifier": "ocid1.vcn.oc1.iad....",
                   "freeform": {
                      "VCN": "VCN-2023-12-19T19:10:27",
                      "app-test": "working"
-                  },
-                  "key": "vcnId",
-                  "identifier": "ocid1.vcn.oc1.iad...."
+                  }
               }
           ]
       }
@@ -168,12 +168,12 @@ Positioning within a `"compliance"` an array:
       "vcnId": "ocid1.vcn.oc1.iad....",
         "compliance": [
             {
+                "key": "vcnId",
+                "identifier": "ocid1.vcn.oc1.iad....",
                 "freeform": {
                      "VCN": "VCN-2023-12-19T19:10:27",
                      "app-test": "working"
-                },
-                "key": "vcnId",
-                "identifier": "ocid1.vcn.oc1.iad...."
+                }
             }
         ]
     }
