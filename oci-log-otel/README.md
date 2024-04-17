@@ -76,9 +76,9 @@ Example OTEL Transformation using these Function Settings
 
 Setting:
 
-    OTEL_RESOURCE_ATTR_MAP = 'oracle'
-    OTEL_SCOPE_ATTR_MAP = ''
-    OTEL_LOG_RECORD_ATTR_MAP = 'id source time type data'
+    OTEL_RESOURCE_ATTR_MAP = 'source time oracle'
+    OTEL_SCOPE_ATTR_MAP = 'type'
+    OTEL_LOG_RECORD_ATTR_MAP = 'id data'
 
 Output:
 
